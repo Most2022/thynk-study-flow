@@ -1,13 +1,14 @@
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, CheckCircle, RotateCcw, Play, MoreVertical, Trash2 } from 'lucide-react';
+import { BookOpen, CheckCircle, RotateCcw, Play, Trash2 } from 'lucide-react';
 
 interface ContentItem {
   id: string;
   name: string;
   status: 'completed' | 'incomplete' | 'revision';
   revisionCount?: number;
+  number: number;
 }
 
 interface ContentSectionProps {
@@ -100,10 +101,19 @@ const ContentSection = ({ items, type, onStatusChange, onDeleteItem }: ContentSe
                 </Button>
               </div>
 
-              <h3 className="text-white font-medium mb-2">{item.name}</h3>
+              {/* Heading */}
+              <h3 className="text-white font-medium mb-2 text-sm leading-tight">{item.name}</h3>
               
+              {/* Lecture Number */}
+              <div className="mb-2">
+                <span className="text-xs text-slate-400">
+                  {type.slice(0, -1)} no. {item.number}
+                </span>
+              </div>
+
+              {/* Status */}
               <div className="flex items-center gap-2 mb-4">
-                <span className={`text-sm ${getStatusColor(item.status)}`}>
+                <span className={`text-sm capitalize ${getStatusColor(item.status)}`}>
                   {item.status}
                 </span>
                 {item.revisionCount && (
@@ -113,6 +123,7 @@ const ContentSection = ({ items, type, onStatusChange, onDeleteItem }: ContentSe
                 )}
               </div>
 
+              {/* Action Buttons */}
               <div className="flex gap-2">
                 {item.status !== 'completed' && (
                   <Button 
