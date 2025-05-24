@@ -97,6 +97,15 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
     saveContent(updatedContent);
   };
 
+  const handleDeleteItem = (type: string, itemId: string) => {
+    const updatedContent = {
+      ...content,
+      [type]: content[type as keyof ChapterContent].filter(item => item.id !== itemId)
+    };
+
+    saveContent(updatedContent);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="container mx-auto px-6 py-8">
@@ -154,6 +163,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
               items={content.lectures}
               type="lectures"
               onStatusChange={handleStatusChange}
+              onDeleteItem={handleDeleteItem}
             />
           </TabsContent>
 
@@ -162,6 +172,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
               items={content.notes}
               type="notes"
               onStatusChange={handleStatusChange}
+              onDeleteItem={handleDeleteItem}
             />
           </TabsContent>
 
@@ -170,6 +181,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
               items={content.dpps}
               type="dpps"
               onStatusChange={handleStatusChange}
+              onDeleteItem={handleDeleteItem}
             />
           </TabsContent>
 
@@ -178,6 +190,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
               items={content.homework}
               type="homework"
               onStatusChange={handleStatusChange}
+              onDeleteItem={handleDeleteItem}
             />
           </TabsContent>
         </Tabs>

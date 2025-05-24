@@ -1,4 +1,3 @@
-
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft, Plus } from 'lucide-react';
@@ -54,33 +53,11 @@ const SubjectDashboard = ({ batch, onBack, onSelectSubject }: SubjectDashboardPr
     localStorage.removeItem(`thynk-chapters-${batch.id}-${subjectName}`);
   };
 
-  const updateSubjectChapterCount = (subjectName: string) => {
+  const getSubjectChapterCount = (subjectName: string) => {
     const chaptersKey = `thynk-chapters-${batch.id}-${subjectName}`;
     const savedChapters = localStorage.getItem(chaptersKey);
-    const chapterCount = savedChapters ? JSON.parse(savedChapters).length : 0;
-    
-    const updatedSubjects = subjects.map(subject => 
-      subject.name === subjectName 
-        ? { ...subject, chapters: chapterCount }
-        : subject
-    );
-    
-    setSubjects(updatedSubjects);
-    localStorage.setItem(`thynk-subjects-${batch.id}`, JSON.stringify(updatedSubjects));
+    return savedChapters ? JSON.parse(savedChapters).length : 0;
   };
-
-  useEffect(() => {
-    // Update chapter counts for all subjects
-    subjects.forEach(subject => {
-      const chaptersKey = `thynk-chapters-${batch.id}-${subject.name}`;
-      const savedChapters = localStorage.getItem(chaptersKey);
-      const chapterCount = savedChapters ? JSON.parse(savedChapters).length : 0;
-      
-      if (subject.chapters !== chapterCount) {
-        updateSubjectChapterCount(subject.name);
-      }
-    });
-  }, [batch.id]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -114,14 +91,20 @@ const SubjectDashboard = ({ batch, onBack, onSelectSubject }: SubjectDashboardPr
         {/* Subjects Grid */}
         <Card className="bg-white/5 border-white/10 backdrop-blur-sm p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {subjects.map((subject) => (
-              <SubjectCard 
-                key={subject.name}
-                subject={subject}
-                onSelect={() => onSelectSubject(subject.name)}
-                onRemove={() => handleRemoveSubject(subject.name)}
-              />
-            ))}
+            {subjects.map((subject) => {
+              const chapterCount = getSubjectChapterCount(subject.name);
+              return (
+                <SubjectCard 
+                  key={subject.name}
+                  subject={{
+                    ...subject,
+                    chapters: chapterCount
+                  }}
+                  onSelect={() => onSelectSubject(subject.name)}
+                  onRemove={() => handleRemoveSubject(subject.name)}
+                />
+              );
+            })}
           </div>
         </Card>
       </div>

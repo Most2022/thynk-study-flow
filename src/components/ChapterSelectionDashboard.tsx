@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, Plus, Video, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Video, FileText, Trash2 } from 'lucide-react';
 import CreateChapterModal from '@/components/CreateChapterModal';
 
 interface Batch {
@@ -61,19 +61,39 @@ const ChapterSelectionDashboard = ({ batch, subject, onBack, onSelectChapter }: 
     setShowCreateModal(false);
   };
 
-  const getChapterContentCounts = (chapterId: string) => {
-    const contentKey = `thynk-${batch.id}-${subject.toLowerCase()}-${chapterId}-content`;
+  const handleDeleteChapter = (chapterId: string, chapterName: string) => {
+    const updatedChapters = chapters.filter(chapter => chapter.id !== chapterId);
+    saveChapters(updatedChapters);
+    
+    // Also remove the chapter content from localStorage
+    const contentKey = `thynk-${batch.id}-${subject.toLowerCase()}-${chapterName.toLowerCase().replace(/\s+/g, '-')}-content`;
+    localStorage.removeItem(contentKey);
+  };
+
+  const getChapterContentCounts = (chapterName: string) => {
+    const contentKey = `thynk-${batch.id}-${subject.toLowerCase()}-${chapterName.toLowerCase().replace(/\s+/g, '-')}-content`;
     const savedContent = localStorage.getItem(contentKey);
     if (savedContent) {
       const content = JSON.parse(savedContent);
+      const lectures = content.lectures || [];
+      const notes = content.notes || [];
+      const dpps = content.dpps || [];
+      
+      const completedLectures = lectures.filter((item: any) => item.status === 'completed').length;
+      const completedNotes = notes.filter((item: any) => item.status === 'completed').length;
+      const completedDpps = dpps.filter((item: any) => item.status === 'completed').length;
+      
       return {
-        lectures: content.lectures?.length || 0,
-        notes: content.notes?.length || 0,
-        dpps: content.dpps?.length || 0,
-        homework: content.homework?.length || 0
+        lectures: { total: lectures.length, completed: completedLectures },
+        notes: { total: notes.length, completed: completedNotes },
+        dpps: { total: dpps.length, completed: completedDpps }
       };
     }
-    return { lectures: 0, notes: 0, dpps: 0, homework: 0 };
+    return { 
+      lectures: { total: 0, completed: 0 }, 
+      notes: { total: 0, completed: 0 }, 
+      dpps: { total: 0, completed: 0 } 
+    };
   };
 
   const handleChapterClick = (chapterName: string) => {
@@ -124,27 +144,58 @@ const ChapterSelectionDashboard = ({ batch, subject, onBack, onSelectChapter }: 
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {chapters.map((chapter) => {
-              const counts = getChapterContentCounts(chapter.id);
+              const counts = getChapterContentCounts(chapter.name);
               return (
                 <Card 
                   key={chapter.id}
-                  onClick={() => handleChapterClick(chapter.name)}
-                  className="bg-slate-800/50 border-slate-700/50 hover:bg-slate-800/70 cursor-pointer transition-all p-6"
+                  className="bg-slate-800/50 border-slate-700/50 hover:bg-slate-800/70 transition-all p-6 group relative"
                 >
-                  <h3 className="text-white font-semibold text-lg mb-4">{chapter.name}</h3>
-                  
-                  <div className="space-y-2 text-sm text-slate-300">
-                    <div className="flex items-center gap-2">
-                      <Video className="w-4 h-4" />
-                      <span>{counts.lectures} Lectures</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span>{counts.notes} Notes</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span>{counts.dpps} DPPs</span>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteChapter(chapter.id, chapter.name);
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-400 hover:bg-red-400/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+
+                  <div 
+                    onClick={() => handleChapterClick(chapter.name)}
+                    className="cursor-pointer"
+                  >
+                    <h3 className="text-white font-semibold text-lg mb-4">{chapter.name}</h3>
+                    
+                    <div className="space-y-2 text-sm text-slate-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Video className="w-4 h-4" />
+                          <span>Lectures</span>
+                        </div>
+                        <span className="text-xs">
+                          {counts.lectures.completed}/{counts.lectures.total} completed
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          <span>Notes</span>
+                        </div>
+                        <span className="text-xs">
+                          {counts.notes.completed}/{counts.notes.total} completed
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          <span>DPPs</span>
+                        </div>
+                        <span className="text-xs">
+                          {counts.dpps.completed}/{counts.dpps.total} completed
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </Card>
