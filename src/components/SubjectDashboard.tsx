@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft, Plus } from 'lucide-react';
 import SubjectCard from '@/components/SubjectCard';
+import { useState, useEffect } from 'react';
 
 interface Batch {
   id: string;
@@ -17,14 +18,70 @@ interface SubjectDashboardProps {
   onSelectSubject: (subject: string) => void;
 }
 
-const subjects = [
-  { name: 'Physics', icon: '🧪', chapters: 27, color: 'from-blue-400 to-purple-500' },
-  { name: 'Chemistry', icon: '⚗️', chapters: 25, color: 'from-green-400 to-blue-500' },
-  { name: 'Maths', icon: '🔢', chapters: 30, color: 'from-orange-400 to-red-500' },
-  { name: 'Biology', icon: '🧬', chapters: 22, color: 'from-purple-400 to-pink-500' },
+interface Subject {
+  name: string;
+  icon: string;
+  chapters: number;
+  color: string;
+}
+
+const defaultSubjects: Subject[] = [
+  { name: 'Physics', icon: '🧪', chapters: 0, color: 'from-blue-400 to-purple-500' },
+  { name: 'Chemistry', icon: '⚗️', chapters: 0, color: 'from-green-400 to-blue-500' },
+  { name: 'Maths', icon: '🔢', chapters: 0, color: 'from-orange-400 to-red-500' },
+  { name: 'Biology', icon: '🧬', chapters: 0, color: 'from-purple-400 to-pink-500' },
 ];
 
 const SubjectDashboard = ({ batch, onBack, onSelectSubject }: SubjectDashboardProps) => {
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+
+  useEffect(() => {
+    const savedSubjects = localStorage.getItem(`thynk-subjects-${batch.id}`);
+    if (savedSubjects) {
+      setSubjects(JSON.parse(savedSubjects));
+    } else {
+      setSubjects(defaultSubjects);
+      localStorage.setItem(`thynk-subjects-${batch.id}`, JSON.stringify(defaultSubjects));
+    }
+  }, [batch.id]);
+
+  const handleRemoveSubject = (subjectName: string) => {
+    const updatedSubjects = subjects.filter(subject => subject.name !== subjectName);
+    setSubjects(updatedSubjects);
+    localStorage.setItem(`thynk-subjects-${batch.id}`, JSON.stringify(updatedSubjects));
+    
+    // Also remove any chapters data for this subject
+    localStorage.removeItem(`thynk-chapters-${batch.id}-${subjectName}`);
+  };
+
+  const updateSubjectChapterCount = (subjectName: string) => {
+    const chaptersKey = `thynk-chapters-${batch.id}-${subjectName}`;
+    const savedChapters = localStorage.getItem(chaptersKey);
+    const chapterCount = savedChapters ? JSON.parse(savedChapters).length : 0;
+    
+    const updatedSubjects = subjects.map(subject => 
+      subject.name === subjectName 
+        ? { ...subject, chapters: chapterCount }
+        : subject
+    );
+    
+    setSubjects(updatedSubjects);
+    localStorage.setItem(`thynk-subjects-${batch.id}`, JSON.stringify(updatedSubjects));
+  };
+
+  useEffect(() => {
+    // Update chapter counts for all subjects
+    subjects.forEach(subject => {
+      const chaptersKey = `thynk-chapters-${batch.id}-${subject.name}`;
+      const savedChapters = localStorage.getItem(chaptersKey);
+      const chapterCount = savedChapters ? JSON.parse(savedChapters).length : 0;
+      
+      if (subject.chapters !== chapterCount) {
+        updateSubjectChapterCount(subject.name);
+      }
+    });
+  }, [batch.id]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="container mx-auto px-6 py-8">
@@ -62,6 +119,7 @@ const SubjectDashboard = ({ batch, onBack, onSelectSubject }: SubjectDashboardPr
                 key={subject.name}
                 subject={subject}
                 onSelect={() => onSelectSubject(subject.name)}
+                onRemove={() => handleRemoveSubject(subject.name)}
               />
             ))}
           </div>
