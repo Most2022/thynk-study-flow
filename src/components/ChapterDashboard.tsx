@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +16,7 @@ interface Batch {
 interface ChapterDashboardProps {
   batch: Batch;
   subject: string;
+  chapter: string;
   onBack: () => void;
 }
 
@@ -34,7 +34,7 @@ interface ChapterContent {
   homework: ContentItem[];
 }
 
-const ChapterDashboard = ({ batch, subject, onBack }: ChapterDashboardProps) => {
+const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardProps) => {
   const [activeTab, setActiveTab] = useState('lectures');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [content, setContent] = useState<ChapterContent>({
@@ -44,7 +44,7 @@ const ChapterDashboard = ({ batch, subject, onBack }: ChapterDashboardProps) => 
     homework: []
   });
 
-  const storageKey = `thynk-${batch.id}-${subject.toLowerCase()}-content`;
+  const storageKey = `thynk-${batch.id}-${subject.toLowerCase()}-${chapter.toLowerCase().replace(/\s+/g, '-')}-content`;
 
   useEffect(() => {
     const savedContent = localStorage.getItem(storageKey);
@@ -111,7 +111,10 @@ const ChapterDashboard = ({ batch, subject, onBack }: ChapterDashboardProps) => 
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-2xl font-bold text-white">{subject}</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{chapter}</h1>
+              <p className="text-slate-400">{subject}</p>
+            </div>
           </div>
           
           <Button 

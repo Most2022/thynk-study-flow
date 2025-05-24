@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import BatchCard from '@/components/BatchCard';
 import CreateBatchModal from '@/components/CreateBatchModal';
 import SubjectDashboard from '@/components/SubjectDashboard';
 import ChapterDashboard from '@/components/ChapterDashboard';
+import ChapterSelectionDashboard from '@/components/ChapterSelectionDashboard';
 
 interface Batch {
   id: string;
@@ -18,9 +18,10 @@ interface Batch {
 const Index = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'subjects' | 'chapter'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'subjects' | 'chapters' | 'chapter'>('dashboard');
   const [currentBatch, setCurrentBatch] = useState<Batch | null>(null);
   const [currentSubject, setCurrentSubject] = useState<string>('');
+  const [currentChapter, setCurrentChapter] = useState<string>('');
 
   useEffect(() => {
     const savedBatches = localStorage.getItem('thynk-batches');
@@ -54,6 +55,11 @@ const Index = () => {
 
   const handleSelectSubject = (subject: string) => {
     setCurrentSubject(subject);
+    setCurrentView('chapters');
+  };
+
+  const handleSelectChapter = (chapter: string) => {
+    setCurrentChapter(chapter);
     setCurrentView('chapter');
   };
 
@@ -65,14 +71,32 @@ const Index = () => {
   const handleBackToSubjects = () => {
     setCurrentView('subjects');
     setCurrentSubject('');
+    setCurrentChapter('');
   };
 
-  if (currentView === 'chapter' && currentBatch && currentSubject) {
+  const handleBackToChapters = () => {
+    setCurrentView('chapters');
+    setCurrentChapter('');
+  };
+
+  if (currentView === 'chapter' && currentBatch && currentSubject && currentChapter) {
     return (
       <ChapterDashboard 
         batch={currentBatch}
         subject={currentSubject}
+        chapter={currentChapter}
+        onBack={handleBackToChapters}
+      />
+    );
+  }
+
+  if (currentView === 'chapters' && currentBatch && currentSubject) {
+    return (
+      <ChapterSelectionDashboard 
+        batch={currentBatch}
+        subject={currentSubject}
         onBack={handleBackToSubjects}
+        onSelectChapter={handleSelectChapter}
       />
     );
   }
