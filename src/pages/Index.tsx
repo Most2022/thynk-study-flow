@@ -1,112 +1,51 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, BookOpen, Settings, LogOut } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Plus, BookOpen, Settings } from 'lucide-react';
 import BatchCard from '@/components/BatchCard';
 import CreateBatchModal from '@/components/CreateBatchModal';
 import SubjectDashboard from '@/components/SubjectDashboard';
 import ChapterDashboard from '@/components/ChapterDashboard';
 import ChapterSelectionDashboard from '@/components/ChapterSelectionDashboard';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
 
 interface Batch {
   id: string;
-  user_id: string;
   name: string;
-  created_at: string;
-  sources: number;
   date: string;
+  sources: number;
 }
 
 const Index = () => {
-  const { user, session, signOut, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'subjects' | 'chapters' | 'chapter'>('dashboard');
   const [currentBatch, setCurrentBatch] = useState<Batch | null>(null);
   const [currentSubject, setCurrentSubject] = useState<string>('');
   const [currentChapter, setCurrentChapter] = useState<string>('');
-  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !session) {
-      navigate('/auth');
+    const savedBatches = localStorage.getItem('thynk-batches');
+    if (savedBatches) {
+      setBatches(JSON.parse(savedBatches));
     }
-  }, [session, authLoading, navigate]);
+  }, []);
 
-  useEffect(() => {
-    const fetchBatches = async () => {
-      if (user) {
-        setIsLoadingData(true);
-        try {
-          const { data, error } = await supabase
-            .from('batches')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-
-          if (error) throw error;
-          if (data) {
-            const fetchedBatches: Batch[] = data.map(b => ({
-                ...b,
-                date: new Date(b.created_at).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                }),
-            }));
-            setBatches(fetchedBatches);
-          }
-        } catch (error: any) {
-          toast({ title: "Error fetching batches", description: error.message, variant: "destructive" });
-          setBatches([]);
-        } finally {
-          setIsLoadingData(false);
-        }
-      } else {
-        setBatches([]);
-        setIsLoadingData(false);
-      }
+  const handleCreateBatch = (name: string) => {
+    const newBatch: Batch = {
+      id: Date.now().toString(),
+      name,
+      date: new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      sources: 1
     };
-
-    if (session && user) {
-      fetchBatches();
-    }
-  }, [session, user]);
-
-  const handleCreateBatch = async (name: string) => {
-    if (!user) {
-      toast({ title: "Authentication Error", description: "You must be logged in to create a batch.", variant: "destructive" });
-      return;
-    }
-    try {
-      const { data, error } = await supabase
-        .from('batches')
-        .insert([{ name, user_id: user.id, sources: 1 }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        const newBatch: Batch = {
-            ...data,
-            date: new Date(data.created_at).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            }),
-        };
-        setBatches(prevBatches => [newBatch, ...prevBatches]);
-        toast({ title: "Batch created successfully!" });
-      }
-    } catch (error: any) {
-      toast({ title: "Error creating batch", description: error.message, variant: "destructive" });
-    } finally {
-      setShowCreateModal(false);
-    }
+    
+    const updatedBatches = [...batches, newBatch];
+    setBatches(updatedBatches);
+    localStorage.setItem('thynk-batches', JSON.stringify(updatedBatches));
+    setShowCreateModal(false);
   };
 
   const handleStudyBatch = (batch: Batch) => {
@@ -114,21 +53,19 @@ const Index = () => {
     setCurrentView('subjects');
   };
 
-  const handleSelectSubject = (subjectName: string) => {
-    setCurrentSubject(subjectName);
+  const handleSelectSubject = (subject: string) => {
+    setCurrentSubject(subject);
     setCurrentView('chapters');
   };
 
-  const handleSelectChapter = (chapterName: string) => {
-    setCurrentChapter(chapterName);
+  const handleSelectChapter = (chapter: string) => {
+    setCurrentChapter(chapter);
     setCurrentView('chapter');
   };
 
   const handleBackToDashboard = () => {
     setCurrentView('dashboard');
     setCurrentBatch(null);
-    setCurrentSubject('');
-    setCurrentChapter('');
   };
 
   const handleBackToSubjects = () => {
@@ -141,18 +78,6 @@ const Index = () => {
     setCurrentView('chapters');
     setCurrentChapter('');
   };
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
-  if (authLoading || (!session && !authLoading)) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <p className="text-white text-xl">Loading...</p>
-      </div>
-    );
-  }
 
   if (currentView === 'chapter' && currentBatch && currentSubject && currentChapter) {
     return (
@@ -198,44 +123,28 @@ const Index = () => {
             <h1 className="text-2xl font-bold text-white">Thynk Unlimited</h1>
           </div>
           
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={() => setShowCreateModal(true)}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-              variant="outline"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create new
-            </Button>
-            {user && (
-              <Button 
-                onClick={handleSignOut}
-                variant="ghost"
-                className="text-white hover:bg-white/10"
-                size="sm"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            )}
-          </div>
+          <Button 
+            onClick={() => setShowCreateModal(true)}
+            className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+            variant="outline"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create new
+          </Button>
         </div>
 
         {/* Batches Grid */}
-        {isLoadingData && <p className="text-white text-center">Loading batches...</p>}
-        {!isLoadingData && batches.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {batches.map((batch) => (
-              <BatchCard 
-                key={batch.id} 
-                batch={batch}
-                onStudy={() => handleStudyBatch(batch)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {batches.map((batch) => (
+            <BatchCard 
+              key={batch.id} 
+              batch={batch} 
+              onStudy={() => handleStudyBatch(batch)}
+            />
+          ))}
+        </div>
 
-        {!isLoadingData && batches.length === 0 && (
+        {batches.length === 0 && (
           <div className="text-center py-20">
             <BookOpen className="w-16 h-16 text-white/40 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-white/80 mb-2">No batches yet</h2>
