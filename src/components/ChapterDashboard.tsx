@@ -25,6 +25,7 @@ interface ContentItem {
   name: string;
   status: 'completed' | 'incomplete' | 'revision';
   revisionCount?: number;
+  number: number; // Added number property
 }
 
 interface ChapterContent {
@@ -65,15 +66,19 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
   };
 
   const handleCreateContent = (type: string, count: number, namePrefix: string) => {
+    const existingItems = content[type as keyof ChapterContent] || [];
+    const lastNumber = existingItems.length > 0 ? Math.max(...existingItems.map(item => item.number)) : 0;
+    
     const newItems: ContentItem[] = Array.from({ length: count }, (_, i) => ({
       id: `${type}-${Date.now()}-${i}`,
-      name: `${namePrefix} ${i + 1}`,
-      status: 'incomplete'
+      name: `${namePrefix}`,
+      status: 'incomplete',
+      number: lastNumber + i + 1
     }));
 
     const updatedContent = {
       ...content,
-      [type]: [...content[type as keyof ChapterContent], ...newItems]
+      [type]: [...existingItems, ...newItems]
     };
 
     saveContent(updatedContent);
