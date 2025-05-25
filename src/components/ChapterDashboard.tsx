@@ -8,6 +8,7 @@ import CreateContentModal from '@/components/CreateContentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import type { TablesInsert } from '@/integrations/supabase/types'; // Added import
 
 // Batch interface from Index.tsx (or a shared types file)
 interface Batch {
@@ -177,10 +178,11 @@ const ChapterDashboard = ({ batch, subject, chapter: chapterName, onBack }: Chap
     const lastItemNumberInState = existingItems.length > 0 ? Math.max(...existingItems.map(item => item.number)) : 0;
     
     // Prepare items for DB insertion using 'item_number'
-    const itemsToInsertForDb: Omit<any, 'id' | 'created_at' | 'updated_at'>[] = Array.from({ length: count }, (_, i) => ({
+    // Changed type annotation here
+    const itemsToInsertForDb: TablesInsert<'content_items'>[] = Array.from({ length: count }, (_, i) => ({
       user_id: user.id,
-      chapter_id: currentChapterId,
-      item_type: type as ContentItem['item_type'],
+      chapter_id: currentChapterId, // currentChapterId is narrowed to string here
+      item_type: type as 'lectures' | 'notes' | 'dpps' | 'homework',
       name: `${namePrefix}`,
       status: 'incomplete',
       item_number: lastItemNumberInState + i + 1, // Use item_number for DB field
