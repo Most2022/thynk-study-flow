@@ -1,7 +1,6 @@
-
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, CheckCircle, RotateCcw, Play, Trash2 } from 'lucide-react';
+import { BookOpen, CheckCircle, RotateCcw, Play, Trash2, Pencil } from 'lucide-react';
 
 interface ContentItem {
   id: string;
@@ -16,9 +15,10 @@ interface ContentSectionProps {
   type: string;
   onStatusChange: (type: string, itemId: string, newStatus: string) => void;
   onDeleteItem: (type: string, itemId: string) => void;
+  onEditItem: (item: ContentItem, type: string) => void;
 }
 
-const ContentSection = ({ items, type, onStatusChange, onDeleteItem }: ContentSectionProps) => {
+const ContentSection = ({ items, type, onStatusChange, onDeleteItem, onEditItem }: ContentSectionProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -91,14 +91,26 @@ const ContentSection = ({ items, type, onStatusChange, onDeleteItem }: ContentSe
                     <BookOpen className="w-5 h-5 text-white" />
                   </div>
                 </div>
-                <Button
-                  onClick={() => onDeleteItem(type, item.id)}
-                  variant="ghost"
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-400 hover:bg-red-400/10"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    onClick={() => onEditItem(item, type)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-400 hover:text-blue-400 hover:bg-blue-400/10"
+                    title="Edit item"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => onDeleteItem(type, item.id)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-400 hover:text-red-400 hover:bg-red-400/10"
+                    title="Delete item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Heading */}
