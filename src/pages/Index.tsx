@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Plus, BookOpen, Settings, LogOut } from 'lucide-react';
 import BatchCard from '@/components/BatchCard';
 import CreateBatchModal from '@/components/CreateBatchModal';
@@ -18,6 +17,7 @@ interface Batch {
   name: string;
   created_at: string;
   sources: number;
+  date: string;
 }
 
 const Index = () => {
@@ -50,14 +50,14 @@ const Index = () => {
 
           if (error) throw error;
           if (data) {
-            const fetchedBatches = data.map(b => ({
+            const fetchedBatches: Batch[] = data.map(b => ({
                 ...b,
                 date: new Date(b.created_at).toLocaleDateString('en-US', { 
                     year: 'numeric', 
                     month: 'short', 
                     day: 'numeric' 
                 }),
-            })) as unknown as Batch[];
+            }));
             setBatches(fetchedBatches);
           }
         } catch (error: any) {
@@ -98,7 +98,7 @@ const Index = () => {
                 month: 'short', 
                 day: 'numeric' 
             }),
-        } as unknown as Batch;
+        };
         setBatches(prevBatches => [newBatch, ...prevBatches]);
         toast({ title: "Batch created successfully!" });
       }
@@ -144,7 +144,6 @@ const Index = () => {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
   };
 
   if (authLoading || (!session && !authLoading)) {
@@ -229,7 +228,7 @@ const Index = () => {
             {batches.map((batch) => (
               <BatchCard 
                 key={batch.id} 
-                batch={{...batch, date: new Date(batch.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}}
+                batch={batch}
                 onStudy={() => handleStudyBatch(batch)}
               />
             ))}

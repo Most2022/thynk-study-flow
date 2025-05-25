@@ -16,16 +16,18 @@ interface Batch {
   name: string;
   created_at: string;
   sources: number;
+  // If Index.tsx's Batch has a 'date' field, add it here too for consistency if needed.
+  // For now, ChapterDashboard only uses batch.id and batch.name from the prop.
 }
 
 interface ChapterDashboardProps {
   batch: Batch; // Full batch object
   subject: string; // TODO: Should be subjectId (UUID)
-  chapter: string; // TODO: Should be chapterId (UUID)
+  chapter: string; // TODO: Should be chapterId (UUID) or name to be resolved to ID
   onBack: () => void;
 }
 
-// Align with Supabase content_items table
+// Align with Supabase content_items table, but use 'number' for local state/props
 interface ContentItem {
   id: string; // UUID
   user_id: string; // UUID
@@ -34,9 +36,10 @@ interface ContentItem {
   name: string;
   status: 'completed' | 'incomplete' | 'revision';
   revision_count?: number;
-  item_number: number; // Was 'number'
+  number: number; // Changed from item_number to match what ContentSection expects
   created_at?: string;
   updated_at?: string;
+  // item_number?: number; // Keep if needed for direct DB field reference, but prefer mapping
 }
 
 interface ChapterContent {
@@ -114,9 +117,10 @@ const ChapterDashboard = ({ batch, subject, chapter: chapterName, onBack }: Chap
       }
       setIsLoading(true);
       try {
+        // Fetch item_number from DB, it will be mapped to 'number' locally
         const { data, error } = await supabase
           .from('content_items')
-          .select('*')
+          .select('id, user_id, chapter_id, item_type, name, status, revision_count, item_number, created_at, updated_at')
           .eq('user_id', user.id)
           .eq('chapter_id', currentChapterId)
           .order('item_number', { ascending: true });
@@ -125,8 +129,20 @@ const ChapterDashboard = ({ batch, subject, chapter: chapterName, onBack }: Chap
 
         const newContent: ChapterContent = { lectures: [], notes: [], dpps: [], homework: [] };
         if (data) {
-          data.forEach(item => {
-            const typedItem = item as ContentItem; // Cast to ensure type alignment
+          data.forEach(dbItem => {
+            // Map item_number from DB to number for local state
+            const typedItem: ContentItem = {
+              id: dbItem.id,
+              user_id: dbItem.user_id,
+              chapter_id: dbItem.chapter_id,
+              item_type: dbItem.item_type as ContentItem['item_type'],
+              name: dbItem.name,
+              status: dbItem.status as ContentItem['status'],
+              revision_count: dbItem.revision_count,
+              number: dbItem.item_number, // Map here
+              created_at: dbItem.created_at,
+              updated_at: dbItem.updated_at,
+            };
             if (newContent[typedItem.item_type as keyof ChapterContent]) {
               newContent[typedItem.item_type as keyof ChapterContent].push(typedItem);
             }
@@ -145,7 +161,6 @@ const ChapterDashboard = ({ batch, subject, chapter: chapterName, onBack }: Chap
   }, [user, currentChapterId]);
 
   const calculateProgress = () => {
-    // ... keep existing code (calculateProgress logic)
     const allItems = [...content.lectures, ...content.notes, ...content.dpps, ...content.homework];
     const completed = allItems.filter(item => item.status === 'completed').length;
     return allItems.length > 0 ? Math.round((completed / allItems.length) * 100) : 0;
@@ -158,31 +173,46 @@ const ChapterDashboard = ({ batch, subject, chapter: chapterName, onBack }: Chap
     }
 
     const existingItems = content[type as keyof ChapterContent] || [];
-    const lastItemNumber = existingItems.length > 0 ? Math.max(...existingItems.map(item => item.item_number)) : 0;
+    // Use 'number' from local state for calculation
+    const lastItemNumberInState = existingItems.length > 0 ? Math.max(...existingItems.map(item => item.number)) : 0;
     
-    const itemsToInsert: Omit<ContentItem, 'id' | 'created_at' | 'updated_at'>[] = Array.from({ length: count }, (_, i) => ({
+    // Prepare items for DB insertion using 'item_number'
+    const itemsToInsertForDb: Omit<any, 'id' | 'created_at' | 'updated_at'>[] = Array.from({ length: count }, (_, i) => ({
       user_id: user.id,
       chapter_id: currentChapterId,
       item_type: type as ContentItem['item_type'],
-      name: `${namePrefix}`, // Original logic kept the same name for all items in a batch creation
+      name: `${namePrefix}`,
       status: 'incomplete',
-      item_number: lastItemNumber + i + 1,
+      item_number: lastItemNumberInState + i + 1, // Use item_number for DB field
       revision_count: 0,
     }));
 
     try {
-      const { data: newItemsData, error } = await supabase
+      const { data: newItemsDataFromDb, error } = await supabase
         .from('content_items')
-        .insert(itemsToInsert)
-        .select();
+        .insert(itemsToInsertForDb)
+        .select('id, user_id, chapter_id, item_type, name, status, revision_count, item_number, created_at, updated_at'); // Ensure item_number is selected
 
       if (error) throw error;
 
-      if (newItemsData) {
-        const typedNewItems = newItemsData as ContentItem[];
+      if (newItemsDataFromDb) {
+        // Map item_number from DB response to number for local state
+        const typedNewItemsForState: ContentItem[] = newItemsDataFromDb.map(dbItem => ({
+          id: dbItem.id,
+          user_id: dbItem.user_id,
+          chapter_id: dbItem.chapter_id,
+          item_type: dbItem.item_type as ContentItem['item_type'],
+          name: dbItem.name,
+          status: dbItem.status as ContentItem['status'],
+          revision_count: dbItem.revision_count,
+          number: dbItem.item_number, // Map here
+          created_at: dbItem.created_at,
+          updated_at: dbItem.updated_at,
+        }));
+
         setContent(prevContent => ({
           ...prevContent,
-          [type]: [...existingItems, ...typedNewItems].sort((a, b) => a.item_number - b.item_number)
+          [type]: [...existingItems, ...typedNewItemsForState].sort((a, b) => a.number - b.number) // Sort by 'number'
         }));
         toast({title: "Content created successfully!"});
       }
@@ -207,13 +237,25 @@ const ChapterDashboard = ({ batch, subject, chapter: chapterName, onBack }: Chap
         .update({ status: newStatus, revision_count: newRevisionCount, updated_at: new Date().toISOString() })
         .eq('id', itemId)
         .eq('user_id', user.id)
-        .select()
+        .select('id, user_id, chapter_id, item_type, name, status, revision_count, item_number, created_at, updated_at') // Ensure item_number is selected
         .single();
       
       if (error) throw error;
 
       if (data) {
-        const updatedItem = data as ContentItem;
+        // Map item_number from DB to number for local state
+        const updatedItem: ContentItem = {
+            id: data.id,
+            user_id: data.user_id,
+            chapter_id: data.chapter_id,
+            item_type: data.item_type as ContentItem['item_type'],
+            name: data.name,
+            status: data.status as ContentItem['status'],
+            revision_count: data.revision_count,
+            number: data.item_number, // Map here
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+        };
         setContent(prevContent => ({
           ...prevContent,
           [type]: prevContent[type as keyof ChapterContent].map(item =>
