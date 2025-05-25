@@ -9,7 +9,168 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      batches: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          sources: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          sources?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          sources?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chapters: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          subject_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          subject_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          subject_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_items: {
+        Row: {
+          chapter_id: string
+          created_at: string | null
+          id: string
+          item_number: number
+          item_type: Database["public"]["Enums"]["content_item_type"]
+          name: string
+          revision_count: number | null
+          status: Database["public"]["Enums"]["content_item_status"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string | null
+          id?: string
+          item_number: number
+          item_type: Database["public"]["Enums"]["content_item_type"]
+          name: string
+          revision_count?: number | null
+          status?: Database["public"]["Enums"]["content_item_status"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string | null
+          id?: string
+          item_number?: number
+          item_type?: Database["public"]["Enums"]["content_item_type"]
+          name?: string
+          revision_count?: number | null
+          status?: Database["public"]["Enums"]["content_item_status"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          username: string | null
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +179,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      content_item_status: "completed" | "incomplete" | "revision"
+      content_item_type: "lectures" | "notes" | "dpps" | "homework"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +295,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      content_item_status: ["completed", "incomplete", "revision"],
+      content_item_type: ["lectures", "notes", "dpps", "homework"],
+    },
   },
 } as const
