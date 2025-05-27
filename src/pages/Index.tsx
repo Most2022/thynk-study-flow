@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Plus, BookOpen, Settings, LogOut } from 'lucide-react';
+import { Plus, BookOpen, Settings, LogOut, Trash2 } from 'lucide-react';
 import BatchCard from '@/components/BatchCard';
 import CreateBatchModal from '@/components/CreateBatchModal';
 import SubjectDashboard from '@/components/SubjectDashboard';
@@ -11,13 +11,23 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Batch {
   id: string;
   name: string;
-  date: string; // This will be created_at from Supabase
+  date: string; 
   sources: number;
-  user_id?: string; // Optional as it's mainly for backend
+  user_id?: string; 
 }
 
 const Index = () => {
@@ -30,6 +40,9 @@ const Index = () => {
   const [currentSubject, setCurrentSubject] = useState<string>('');
   const [currentChapter, setCurrentChapter] = useState<string>('');
   const [isLoadingBatches, setIsLoadingBatches] = useState(true);
+
+  const [showDeleteBatchDialog, setShowDeleteBatchDialog] = useState(false);
+  const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -53,7 +66,7 @@ const Index = () => {
               month: 'short',
               day: 'numeric'
             }),
-            sources: batch.sources || 1, // default to 1 if null
+            sources: batch.sources || 1, 
             user_id: batch.user_id
           }));
           setBatches(formattedBatches);
@@ -62,7 +75,6 @@ const Index = () => {
       };
       fetchBatches();
     } else {
-      // If no user, clear batches and stop loading. AuthProvider will handle redirect.
       setBatches([]);
       setIsLoadingBatches(false);
     }
@@ -77,8 +89,7 @@ const Index = () => {
     const newBatchData = {
       name,
       user_id: user.id,
-      sources: 1, // Default value
-      // created_at is set by default in Supabase
+      sources: 1, 
     };
     
     const { data: insertedBatch, error } = await supabase
@@ -107,10 +118,36 @@ const Index = () => {
     }
   };
 
+  const confirmDeleteBatch = async () => {
+    if (!batchToDelete || !user) {
+      toast.error("Could not delete batch. Batch not found or user not logged in.");
+      return;
+    }
+    const { error } = await supabase
+      .from('batches')
+      .delete()
+      .eq('id', batchToDelete.id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error(`Failed to delete batch: ${error.message}`);
+    } else {
+      setBatches(prevBatches => prevBatches.filter(b => b.id !== batchToDelete.id));
+      toast.success(`Batch "${batchToDelete.name}" deleted successfully.`);
+    }
+    setShowDeleteBatchDialog(false);
+    setBatchToDelete(null);
+  };
+
+  const openDeleteBatchDialog = (batch: Batch) => {
+    setBatchToDelete(batch);
+    setShowDeleteBatchDialog(true);
+  };
+
   const handleLogout = async () => {
     await signOut();
     toast.success("Logged out successfully.");
-    navigate('/auth'); // Navigate to auth page after sign out
+    navigate('/auth'); 
   };
 
   const handleStudyBatch = (batch: Batch) => {
@@ -216,11 +253,21 @@ const Index = () => {
         {!isLoadingBatches && batches.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {batches.map((batch) => (
-              <BatchCard 
-                key={batch.id} 
-                batch={batch} 
-                onStudy={() => handleStudyBatch(batch)}
-              />
+              <div key={batch.id} className="relative group">
+                <BatchCard 
+                  batch={batch} 
+                  onStudy={() => handleStudyBatch(batch)}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openDeleteBatchDialog(batch)}
+                  className="absolute top-2 right-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Delete batch"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             ))}
           </div>
         )}
@@ -245,6 +292,33 @@ const Index = () => {
           onClose={() => setShowCreateModal(false)}
           onCreateBatch={handleCreateBatch}
         />
+
+        {batchToDelete && (
+          <AlertDialog open={showDeleteBatchDialog} onOpenChange={setShowDeleteBatchDialog}>
+            <AlertDialogContent className="bg-slate-800 border-slate-700 text-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription className="text-slate-400">
+                  This will permanently delete the batch "{batchToDelete.name}" and all its associated subjects, chapters, and content. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel 
+                  onClick={() => setBatchToDelete(null)}
+                  className="bg-transparent hover:bg-white/10 text-white border-white/20"
+                >
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={confirmDeleteBatch}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );

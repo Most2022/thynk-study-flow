@@ -171,6 +171,63 @@ export type Database = {
           },
         ]
       }
+      targets: {
+        Row: {
+          category: Database["public"]["Enums"]["target_category_enum"]
+          chapter_id: string
+          created_at: string | null
+          deadline: string | null
+          end_time: string | null
+          id: string
+          name: string
+          progress: number
+          start_time: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["target_category_enum"]
+          chapter_id: string
+          created_at?: string | null
+          deadline?: string | null
+          end_time?: string | null
+          id?: string
+          name: string
+          progress?: number
+          start_time?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["target_category_enum"]
+          chapter_id?: string
+          created_at?: string | null
+          deadline?: string | null
+          end_time?: string | null
+          id?: string
+          name?: string
+          progress?: number
+          start_time?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "targets_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "targets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -181,6 +238,11 @@ export type Database = {
     Enums: {
       content_item_status: "completed" | "incomplete" | "revision"
       content_item_type: "lectures" | "notes" | "dpps" | "homework"
+      target_category_enum:
+        | "preprimary"
+        | "primary"
+        | "secondary"
+        | "higher_secondary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -298,6 +360,12 @@ export const Constants = {
     Enums: {
       content_item_status: ["completed", "incomplete", "revision"],
       content_item_type: ["lectures", "notes", "dpps", "homework"],
+      target_category_enum: [
+        "preprimary",
+        "primary",
+        "secondary",
+        "higher_secondary",
+      ],
     },
   },
 } as const
