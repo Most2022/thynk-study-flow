@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,35 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useState } from "react";
-
-const targetCategories = [
-  "preprimary",
-  "primary",
-  "secondary",
-  "higher_secondary",
-] as const;
-
-const targetFormSchema = z.object({
-  name: z.string().min(3, "Target name must be at least 3 characters."),
-  category: z.enum(targetCategories),
-  deadline: z.date().optional(),
-  start_time: z.string().optional(), // Expects "HH:MM"
-  end_time: z.string().optional(),   // Expects "HH:MM"
-});
-
-type TargetFormValues = z.infer<typeof targetFormSchema>;
+import { targetCategories } from "@/config/targetConstants";
+import { useCreateTargetForm } from "@/hooks/useCreateTargetForm";
+import { TargetFormValues } from "@/schemas/targetSchema";
 
 interface CreateTargetModalProps {
   isOpen: boolean;
@@ -60,50 +40,11 @@ const CreateTargetModal = ({
   chapterId,
   onTargetCreated,
 }: CreateTargetModalProps) => {
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const form = useForm<TargetFormValues>({
-    resolver: zodResolver(targetFormSchema),
-    defaultValues: {
-      name: "",
-      category: "primary",
-      start_time: "",
-      end_time: "",
-    },
+  const { form, onSubmit, isSubmitting } = useCreateTargetForm({
+    chapterId,
+    onTargetCreated,
+    onCloseModal: onClose,
   });
-
-  const onSubmit = async (values: TargetFormValues) => {
-    if (!user || !chapterId) {
-      toast.error("User or chapter information is missing.");
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase.from("targets").insert({
-        name: values.name,
-        category: values.category,
-        deadline: values.deadline ? values.deadline.toISOString() : null,
-        start_time: values.start_time || null,
-        end_time: values.end_time || null,
-        chapter_id: chapterId,
-        user_id: user.id,
-        progress: 0, // Default progress
-      });
-
-      if (error) {
-        throw error;
-      }
-      toast.success("Target created successfully!");
-      onTargetCreated();
-      form.reset();
-      onClose();
-    } catch (error: any) {
-      toast.error(`Failed to create target: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -133,7 +74,7 @@ const CreateTargetModal = ({
           <div>
             <Label htmlFor="category" className="text-slate-300">Category</Label>
             <Select
-              onValueChange={(value) => form.setValue("category", value as typeof targetCategories[number])}
+              onValueChange={(value) => form.setValue("category", value as TargetFormValues["category"])}
               defaultValue={form.getValues("category")}
             >
               <SelectTrigger className="w-full mt-1 bg-slate-700 border-slate-600 text-white">
@@ -168,7 +109,7 @@ const CreateTargetModal = ({
                 <Calendar
                   mode="single"
                   selected={form.watch("deadline")}
-                  onSelect={(date) => form.setValue("deadline", date)}
+                  onSelect={(date) => form.setValue("deadline", date || undefined)}
                   initialFocus
                   className="text-white"
                 />
@@ -215,3 +156,4 @@ const CreateTargetModal = ({
 };
 
 export default CreateTargetModal;
+
