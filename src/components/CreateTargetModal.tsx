@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -117,7 +116,7 @@ const CreateTargetModal = ({
             </Popover>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="start_time" className="text-slate-300">Start Time (Optional)</Label>
               <Input
@@ -156,4 +155,3 @@ const CreateTargetModal = ({
 };
 
 export default CreateTargetModal;
-

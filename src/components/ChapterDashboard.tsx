@@ -312,24 +312,24 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
       );
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button 
               onClick={onBack}
               variant="ghost" 
               size="sm"
-              className="text-white hover:bg-white/10"
+              className="text-white hover:bg-white/10 p-2 sm:p-auto"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4 sm:w-4 sm:h-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-white">{chapter}</h1>
-              <p className="text-slate-400">{subject}</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">{chapter}</h1>
+              <p className="text-sm sm:text-base text-slate-400">{subject}</p>
             </div>
           </div>
           
@@ -345,10 +345,10 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
                 setShowCreateModal(true);
               }
             }}
-            className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+            className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2"
             variant="outline"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             {activeTab === 'targets' ? 'Create Target' : 'Create New'}
           </Button>
         </div>
@@ -360,23 +360,25 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
 
         {/* Content Tabs */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ChapterContentType | 'targets')} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 bg-slate-800/50 border-slate-700"> {/* Updated grid-cols-5 */}
-            <TabsTrigger value="lectures" className="text-white data-[state=active]:bg-slate-700">
-              Lectures
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="text-white data-[state=active]:bg-slate-700">
-              Notes
-            </TabsTrigger>
-            <TabsTrigger value="dpps" className="text-white data-[state=active]:bg-slate-700">
-              DPPs
-            </TabsTrigger>
-            <TabsTrigger value="homework" className="text-white data-[state=active]:bg-slate-700">
-              Homework
-            </TabsTrigger>
-            <TabsTrigger value="targets" className="text-white data-[state=active]:bg-slate-700"> {/* New Targets Tab */}
-              <TargetIcon className="w-4 h-4 mr-2" /> Targets
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2">
+            <TabsList className="grid w-full grid-cols-5 bg-slate-800/50 border-slate-700 min-w-[500px] sm:min-w-full">
+              <TabsTrigger value="lectures" className="text-white data-[state=active]:bg-slate-700 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">
+                Lectures
+              </TabsTrigger>
+              <TabsTrigger value="notes" className="text-white data-[state=active]:bg-slate-700 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">
+                Notes
+              </TabsTrigger>
+              <TabsTrigger value="dpps" className="text-white data-[state=active]:bg-slate-700 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">
+                DPPs
+              </TabsTrigger>
+              <TabsTrigger value="homework" className="text-white data-[state=active]:bg-slate-700 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">
+                Homework
+              </TabsTrigger>
+              <TabsTrigger value="targets" className="text-white data-[state=active]:bg-slate-700 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">
+                <TargetIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Targets
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {(['lectures', 'notes', 'dpps', 'homework'] as ChapterContentType[]).map((contentType) => (
             <TabsContent key={contentType} value={contentType} className="mt-6">
@@ -391,50 +393,50 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
           ))}
 
           <TabsContent value="targets" className="mt-6">
-            {!currentChapterId && <p className="text-center text-slate-400 py-4">Identifying chapter to load targets...</p>}
-            {currentChapterId && isLoadingTargets && <p className="text-center text-slate-400 py-4">Loading targets...</p>}
+            {!currentChapterId && <p className="text-center text-slate-400 py-4 text-sm sm:text-base">Identifying chapter to load targets...</p>}
+            {currentChapterId && isLoadingTargets && <p className="text-center text-slate-400 py-4 text-sm sm:text-base">Loading targets...</p>}
             {currentChapterId && !isLoadingTargets && targets.length === 0 && (
               <div className="text-center py-10 text-white">
-                <TargetIcon className="w-12 h-12 mx-auto mb-4 text-slate-500" />
-                <h3 className="text-xl font-semibold mb-2">No Targets Yet</h3>
-                <p className="text-slate-400 mb-4">Create targets to track your progress for this chapter.</p>
-                <Button onClick={() => setShowCreateTargetModal(true)} className="bg-indigo-600 hover:bg-indigo-700">
-                  <Plus className="w-4 h-4 mr-2" /> Create First Target
+                <TargetIcon className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-slate-500" />
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">No Targets Yet</h3>
+                <p className="text-slate-400 mb-4 text-sm sm:text-base">Create targets to track your progress for this chapter.</p>
+                <Button onClick={() => setShowCreateTargetModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-xs sm:text-sm">
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Create First Target
                 </Button>
               </div>
             )}
             {currentChapterId && !isLoadingTargets && targets.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {targets.map(target => (
                   <Card key={target.id} className="bg-slate-800/70 border-slate-700 text-white">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-lg">{target.name}</CardTitle>
-                          <CardDescription className="text-slate-400 capitalize">{target.category}</CardDescription>
+                          <CardTitle className="text-base sm:text-lg">{target.name}</CardTitle>
+                          <CardDescription className="text-slate-400 capitalize text-xs sm:text-sm">{target.category}</CardDescription>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => openDeleteTargetDialog(target)} className="text-slate-400 hover:text-red-500 px-2">
-                          <Trash2 className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteTargetDialog(target)} className="text-slate-400 hover:text-red-500 h-8 w-8 sm:h-auto sm:w-auto sm:px-2">
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className="flex items-center justify-between text-sm text-slate-300">
+                      <div className="flex items-center justify-between text-xs sm:text-sm text-slate-300">
                         <span>Progress:</span>
                         <span>{target.progress}%</span>
                       </div>
-                      <Progress value={target.progress} className="h-2 bg-slate-700 [&>div]:bg-indigo-500" />
+                      <Progress value={target.progress} className="h-1.5 sm:h-2 bg-slate-700 [&>div]:bg-indigo-500" />
                        <div className="flex justify-between items-center mt-2">
-                        <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleUpdateTargetProgress(target.id, target.progress - 10)}> -10% </Button>
-                        <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleUpdateTargetProgress(target.id, target.progress + 10)}> +10% </Button>
+                        <Button size="sm" variant="outline" className="text-xs h-7 px-2.5 sm:px-3" onClick={() => handleUpdateTargetProgress(target.id, target.progress - 10)}> -10% </Button>
+                        <Button size="sm" variant="outline" className="text-xs h-7 px-2.5 sm:px-3" onClick={() => handleUpdateTargetProgress(target.id, target.progress + 10)}> +10% </Button>
                       </div>
                       {target.deadline && (
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs sm:text-sm text-slate-400">
                           Deadline: {new Date(target.deadline).toLocaleDateString()}
                         </p>
                       )}
                       {(target.start_time || target.end_time) && (
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs sm:text-sm text-slate-400">
                           Time: {target.start_time || '--:--'} - {target.end_time || '--:--'}
                         </p>
                       )}
