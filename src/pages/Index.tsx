@@ -7,6 +7,7 @@ import CreateBatchModal from '@/components/CreateBatchModal';
 import SubjectDashboard from '@/components/SubjectDashboard';
 import ChapterDashboard from '@/components/ChapterDashboard';
 import ChapterSelectionDashboard from '@/components/ChapterSelectionDashboard';
+import ScheduledTasksSection from '@/components/ScheduledTasksSection';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -244,6 +245,17 @@ const Index = () => {
               Logout
             </Button>
           </div>
+        </div>
+
+        {/* Scheduled Tasks Section */}
+        <div className="mb-8">
+          <ScheduledTasksSection />
+        </div>
+
+        {/* Batches Section Header */}
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-white mb-2">Your Batches</h2>
+          <p className="text-slate-400">Manage your study batches and subjects</p>
         </div>
 
         {/* Batches Grid */}

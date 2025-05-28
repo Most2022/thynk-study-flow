@@ -139,6 +139,54 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_tasks: {
+        Row: {
+          batch_id: string
+          chapter_id: string
+          content_item_id: string | null
+          created_at: string
+          id: string
+          scheduled_date: string
+          status: string
+          subject_id: string
+          task_name: string
+          task_number: number
+          task_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          chapter_id: string
+          content_item_id?: string | null
+          created_at?: string
+          id?: string
+          scheduled_date?: string
+          status?: string
+          subject_id: string
+          task_name: string
+          task_number: number
+          task_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          chapter_id?: string
+          content_item_id?: string | null
+          created_at?: string
+          id?: string
+          scheduled_date?: string
+          status?: string
+          subject_id?: string
+          task_name?: string
+          task_number?: number
+          task_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           batch_id: string
