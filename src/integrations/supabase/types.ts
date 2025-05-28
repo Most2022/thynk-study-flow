@@ -63,6 +63,13 @@ export type Database = {
             referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_chapters_subject_id"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
         ]
       }
       content_items: {
@@ -110,6 +117,13 @@ export type Database = {
             referencedRelation: "chapters"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_content_items_chapter_id"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -139,6 +153,83 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_tasks: {
+        Row: {
+          batch_id: string
+          chapter_id: string
+          content_item_id: string | null
+          created_at: string
+          id: string
+          scheduled_date: string
+          status: string
+          subject_id: string
+          task_name: string
+          task_number: number
+          task_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          chapter_id: string
+          content_item_id?: string | null
+          created_at?: string
+          id?: string
+          scheduled_date?: string
+          status?: string
+          subject_id: string
+          task_name: string
+          task_number: number
+          task_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          chapter_id?: string
+          content_item_id?: string | null
+          created_at?: string
+          id?: string
+          scheduled_date?: string
+          status?: string
+          subject_id?: string
+          task_name?: string
+          task_number?: number
+          task_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_scheduled_tasks_batch_id"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_scheduled_tasks_chapter_id"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_scheduled_tasks_content_item_id"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_scheduled_tasks_subject_id"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           batch_id: string
@@ -162,6 +253,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_subjects_batch_id"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subjects_batch_id_fkey"
             columns: ["batch_id"]

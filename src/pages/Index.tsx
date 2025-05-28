@@ -7,6 +7,7 @@ import CreateBatchModal from '@/components/CreateBatchModal';
 import SubjectDashboard from '@/components/SubjectDashboard';
 import ChapterDashboard from '@/components/ChapterDashboard';
 import ChapterSelectionDashboard from '@/components/ChapterSelectionDashboard';
+import TodayScheduled from '@/components/TodayScheduled';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -181,6 +182,11 @@ const Index = () => {
     setCurrentChapter('');
   };
 
+  const handleTaskComplete = () => {
+    // This could be used to refresh batch data if needed
+    // For now, we'll just show a success message as the toast is already handled
+  };
+
   if (currentView === 'chapter' && currentBatch && currentSubject && currentChapter) {
     return (
       <ChapterDashboard 
@@ -244,6 +250,16 @@ const Index = () => {
               Logout
             </Button>
           </div>
+        </div>
+
+        {/* Today Scheduled Section */}
+        <div className="mb-8">
+          <TodayScheduled onTaskComplete={handleTaskComplete} />
+        </div>
+
+        {/* Batches Section */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Your Batches</h2>
         </div>
 
         {/* Batches Grid */}
