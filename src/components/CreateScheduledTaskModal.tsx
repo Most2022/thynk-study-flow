@@ -28,6 +28,7 @@ interface ContentItem {
   id: string;
   name: string;
   item_type: string;
+  item_number: number;
 }
 
 interface CreateScheduledTaskModalProps {
@@ -38,13 +39,11 @@ interface CreateScheduledTaskModalProps {
 
 const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateScheduledTaskModalProps) => {
   const { user } = useAuth();
-  const [taskName, setTaskName] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedChapter, setSelectedChapter] = useState('');
+  const [selectedTaskType, setSelectedTaskType] = useState('');
   const [selectedContentItem, setSelectedContentItem] = useState('');
-  const [taskType, setTaskType] = useState('');
-  const [taskNumber, setTaskNumber] = useState('');
   const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
   
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -64,6 +63,7 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
       fetchSubjects();
       setSelectedSubject('');
       setSelectedChapter('');
+      setSelectedTaskType('');
       setSelectedContentItem('');
     }
   }, [selectedBatch]);
@@ -72,16 +72,17 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
     if (selectedSubject) {
       fetchChapters();
       setSelectedChapter('');
+      setSelectedTaskType('');
       setSelectedContentItem('');
     }
   }, [selectedSubject]);
 
   useEffect(() => {
-    if (selectedChapter) {
+    if (selectedChapter && selectedTaskType) {
       fetchContentItems();
       setSelectedContentItem('');
     }
-  }, [selectedChapter]);
+  }, [selectedChapter, selectedTaskType]);
 
   const fetchBatches = async () => {
     const { data, error } = await supabase
@@ -130,8 +131,9 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
   const fetchContentItems = async () => {
     const { data, error } = await supabase
       .from('content_items')
-      .select('id, name, item_type')
+      .select('id, name, item_type, item_number')
       .eq('chapter_id', selectedChapter)
+      .eq('item_type', selectedTaskType)
       .eq('user_id', user!.id)
       .order('item_number');
 
@@ -144,22 +146,30 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !taskName || !selectedBatch || !selectedSubject || !selectedChapter || !taskType || !taskNumber) {
+    if (!user || !selectedBatch || !selectedSubject || !selectedChapter || !selectedTaskType || !selectedContentItem) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
 
+    // Get the selected content item details
+    const selectedContent = contentItems.find(item => item.id === selectedContentItem);
+    if (!selectedContent) {
+      toast.error('Selected content item not found');
+      setIsSubmitting(false);
+      return;
+    }
+
     const taskData = {
       user_id: user.id,
       batch_id: selectedBatch,
       subject_id: selectedSubject,
       chapter_id: selectedChapter,
-      content_item_id: selectedContentItem || null,
-      task_type: taskType,
-      task_name: taskName,
-      task_number: parseInt(taskNumber),
+      content_item_id: selectedContentItem,
+      task_type: selectedTaskType,
+      task_name: `${selectedContent.name} (${selectedTaskType})`,
+      task_number: selectedContent.item_number,
       scheduled_date: scheduledDate,
       status: 'incomplete'
     };
@@ -180,13 +190,11 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
   };
 
   const handleClose = () => {
-    setTaskName('');
     setSelectedBatch('');
     setSelectedSubject('');
     setSelectedChapter('');
+    setSelectedTaskType('');
     setSelectedContentItem('');
-    setTaskType('');
-    setTaskNumber('');
     setScheduledDate(new Date().toISOString().split('T')[0]);
     setBatches([]);
     setSubjects([]);
@@ -203,18 +211,6 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="taskName">Task Name</Label>
-            <Input
-              id="taskName"
-              value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white"
-              placeholder="Enter task name..."
-              required
-            />
-          </div>
-
           <div>
             <Label htmlFor="batch">Batch</Label>
             <Select value={selectedBatch} onValueChange={setSelectedBatch} required>
@@ -264,24 +260,8 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
           </div>
 
           <div>
-            <Label htmlFor="contentItem">Content Item (Optional)</Label>
-            <Select value={selectedContentItem} onValueChange={setSelectedContentItem} disabled={!selectedChapter}>
-              <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                <SelectValue placeholder="Select content item..." />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-700 border-slate-600">
-                {contentItems.map((item) => (
-                  <SelectItem key={item.id} value={item.id} className="text-white">
-                    {item.name} ({item.item_type})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
             <Label htmlFor="taskType">Task Type</Label>
-            <Select value={taskType} onValueChange={setTaskType} required>
+            <Select value={selectedTaskType} onValueChange={setSelectedTaskType} required disabled={!selectedChapter}>
               <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                 <SelectValue placeholder="Select task type..." />
               </SelectTrigger>
@@ -294,19 +274,23 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="taskNumber">Task Number</Label>
-            <Input
-              id="taskNumber"
-              type="number"
-              value={taskNumber}
-              onChange={(e) => setTaskNumber(e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white"
-              placeholder="Enter task number..."
-              min="1"
-              required
-            />
-          </div>
+          {selectedTaskType && (
+            <div>
+              <Label htmlFor="contentItem">Select {selectedTaskType}</Label>
+              <Select value={selectedContentItem} onValueChange={setSelectedContentItem} required disabled={!selectedTaskType}>
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectValue placeholder={`Select ${selectedTaskType}...`} />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  {contentItems.map((item) => (
+                    <SelectItem key={item.id} value={item.id} className="text-white">
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="scheduledDate">Scheduled Date</Label>

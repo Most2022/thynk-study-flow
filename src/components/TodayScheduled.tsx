@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,24 +71,59 @@ const TodayScheduled = ({ onTaskComplete }: TodayScheduledProps) => {
   const handleTaskStatusToggle = async (task: ScheduledTask) => {
     const newStatus = task.status === 'completed' ? 'incomplete' : 'completed';
     
-    const { error } = await supabase
+    // Update the scheduled task status
+    const { error: taskError } = await supabase
       .from('scheduled_tasks')
       .update({ status: newStatus })
       .eq('id', task.id);
 
-    if (error) {
-      toast.error('Failed to update task status: ' + error.message);
-    } else {
-      setTasks(prevTasks => 
-        prevTasks.map(t => 
-          t.id === task.id ? { ...t, status: newStatus } : t
-        )
-      );
-      toast.success(newStatus === 'completed' ? 'Task completed!' : 'Task marked as incomplete');
-      
-      if (newStatus === 'completed' && onTaskComplete) {
-        onTaskComplete();
+    if (taskError) {
+      toast.error('Failed to update task status: ' + taskError.message);
+      return;
+    }
+
+    // If task is being marked as completed and has a content item, update the content item status too
+    if (newStatus === 'completed' && task.content_item_id) {
+      const { error: contentError } = await supabase
+        .from('content_items')
+        .update({ 
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.content_item_id);
+
+      if (contentError) {
+        console.error('Failed to update content item status:', contentError.message);
+        // Don't show error to user as the main task update succeeded
       }
+    }
+
+    // If task is being marked as incomplete and has a content item, update the content item status too
+    if (newStatus === 'incomplete' && task.content_item_id) {
+      const { error: contentError } = await supabase
+        .from('content_items')
+        .update({ 
+          status: 'incomplete',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.content_item_id);
+
+      if (contentError) {
+        console.error('Failed to update content item status:', contentError.message);
+      }
+    }
+
+    // Update local state
+    setTasks(prevTasks => 
+      prevTasks.map(t => 
+        t.id === task.id ? { ...t, status: newStatus } : t
+      )
+    );
+    
+    toast.success(newStatus === 'completed' ? 'Task completed!' : 'Task marked as incomplete');
+    
+    if (newStatus === 'completed' && onTaskComplete) {
+      onTaskComplete();
     }
   };
 
