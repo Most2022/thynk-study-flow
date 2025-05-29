@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,6 +30,8 @@ interface ContentItem {
   item_number: number;
 }
 
+type TaskType = 'lectures' | 'notes' | 'dpps' | 'homework';
+
 interface CreateScheduledTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -42,7 +43,7 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
   const [selectedBatch, setSelectedBatch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedChapter, setSelectedChapter] = useState('');
-  const [selectedTaskType, setSelectedTaskType] = useState('');
+  const [selectedTaskType, setSelectedTaskType] = useState<TaskType | ''>('');
   const [selectedContentItem, setSelectedContentItem] = useState('');
   const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
   
@@ -129,11 +130,13 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
   };
 
   const fetchContentItems = async () => {
+    if (!selectedTaskType) return;
+    
     const { data, error } = await supabase
       .from('content_items')
       .select('id, name, item_type, item_number')
       .eq('chapter_id', selectedChapter)
-      .eq('item_type', selectedTaskType)
+      .eq('item_type', selectedTaskType as TaskType)
       .eq('user_id', user!.id)
       .order('item_number');
 
@@ -261,7 +264,7 @@ const CreateScheduledTaskModal = ({ isOpen, onClose, onTaskCreated }: CreateSche
 
           <div>
             <Label htmlFor="taskType">Task Type</Label>
-            <Select value={selectedTaskType} onValueChange={setSelectedTaskType} required disabled={!selectedChapter}>
+            <Select value={selectedTaskType} onValueChange={(value: TaskType) => setSelectedTaskType(value)} required disabled={!selectedChapter}>
               <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                 <SelectValue placeholder="Select task type..." />
               </SelectTrigger>
