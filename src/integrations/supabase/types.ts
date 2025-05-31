@@ -9,7 +9,203 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      batches: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          name: string
+          sources: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          name: string
+          sources?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          name?: string
+          sources?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chapters: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          subject_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          subject_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          subject_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_items: {
+        Row: {
+          chapter_id: string
+          created_at: string | null
+          id: string
+          item_type: Database["public"]["Enums"]["content_item_type"]
+          name: string
+          number: number
+          revision_count: number | null
+          status: Database["public"]["Enums"]["content_item_status"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string | null
+          id?: string
+          item_type: Database["public"]["Enums"]["content_item_type"]
+          name: string
+          number: number
+          revision_count?: number | null
+          status?: Database["public"]["Enums"]["content_item_status"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string | null
+          id?: string
+          item_type?: Database["public"]["Enums"]["content_item_type"]
+          name?: string
+          number?: number
+          revision_count?: number | null
+          status?: Database["public"]["Enums"]["content_item_status"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      targets: {
+        Row: {
+          category: Database["public"]["Enums"]["target_category"]
+          chapter_id: string
+          created_at: string | null
+          deadline: string | null
+          end_time: string | null
+          id: string
+          name: string
+          progress: number | null
+          start_time: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["target_category"]
+          chapter_id: string
+          created_at?: string | null
+          deadline?: string | null
+          end_time?: string | null
+          id?: string
+          name: string
+          progress?: number | null
+          start_time?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["target_category"]
+          chapter_id?: string
+          created_at?: string | null
+          deadline?: string | null
+          end_time?: string | null
+          id?: string
+          name?: string
+          progress?: number | null
+          start_time?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "targets_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +214,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      content_item_status: "completed" | "incomplete" | "revision"
+      content_item_type: "lectures" | "notes" | "dpps" | "homework"
+      target_category:
+        | "preprimary"
+        | "primary"
+        | "secondary"
+        | "higher_secondary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +335,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      content_item_status: ["completed", "incomplete", "revision"],
+      content_item_type: ["lectures", "notes", "dpps", "homework"],
+      target_category: [
+        "preprimary",
+        "primary",
+        "secondary",
+        "higher_secondary",
+      ],
+    },
   },
 } as const
