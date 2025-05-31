@@ -1,11 +1,9 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  session: null;
+  user: null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -13,41 +11,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      if (_event === 'INITIAL_SESSION') {
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
+  const [loading, setLoading] = useState(false);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    // The onAuthStateChange listener will update session and user to null
+    // No authentication system connected
   };
 
   const value = {
-    session,
-    user,
+    session: null,
+    user: null,
     loading,
     signOut,
   };
