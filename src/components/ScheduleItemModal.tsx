@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Calendar, Plus } from 'lucide-react';
+import { ArrowLeft, Calendar, Plus, BookOpen, FileText, Target, PenTool, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -42,12 +41,21 @@ interface ScheduleItemModalProps {
   onScheduleItem: () => void;
 }
 
+const contentTypes = [
+  { value: 'lectures', label: 'Lectures', icon: GraduationCap, color: 'from-blue-500 to-blue-600', description: 'Video lectures and recorded sessions' },
+  { value: 'notes', label: 'Notes', icon: FileText, color: 'from-green-500 to-green-600', description: 'Study notes and written materials' },
+  { value: 'dpps', label: 'DPPs', icon: BookOpen, color: 'from-purple-500 to-purple-600', description: 'Daily Practice Problems' },
+  { value: 'homeworks', label: 'Homework', icon: PenTool, color: 'from-orange-500 to-orange-600', description: 'Assignments and homework tasks' },
+  { value: 'targets', label: 'Targets', icon: Target, color: 'from-red-500 to-red-600', description: 'Goals and milestones' }
+];
+
 const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModalProps) => {
   const { user } = useAuth();
-  const [step, setStep] = useState<'batch' | 'subject' | 'chapter' | 'content'>('batch');
+  const [step, setStep] = useState<'batch' | 'subject' | 'chapter' | 'contentType' | 'content'>('batch');
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
+  const [selectedContentType, setSelectedContentType] = useState<string>('');
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
   const [scheduledDate, setScheduledDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
@@ -133,13 +141,14 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
   };
 
   const fetchContentItems = async () => {
-    if (!user || !selectedChapter) return;
+    if (!user || !selectedChapter || !selectedContentType) return;
     setIsLoading(true);
     const { data, error } = await supabase
       .from('content_items')
       .select('*')
       .eq('chapter_id', selectedChapter.id)
       .eq('user_id', user.id)
+      .eq('item_type', selectedContentType)
       .order('number', { ascending: true });
 
     if (error) {
@@ -186,6 +195,7 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
     setSelectedBatch(null);
     setSelectedSubject(null);
     setSelectedChapter(null);
+    setSelectedContentType('');
     setSelectedContent(null);
     setScheduledDate(new Date().toISOString().split('T')[0]);
     onClose();
@@ -196,13 +206,19 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
       setStep('batch');
       setSelectedSubject(null);
       setSelectedChapter(null);
+      setSelectedContentType('');
       setSelectedContent(null);
     } else if (step === 'chapter') {
       setStep('subject');
       setSelectedChapter(null);
+      setSelectedContentType('');
+      setSelectedContent(null);
+    } else if (step === 'contentType') {
+      setStep('chapter');
+      setSelectedContentType('');
       setSelectedContent(null);
     } else if (step === 'content') {
-      setStep('chapter');
+      setStep('contentType');
       setSelectedContent(null);
     }
   };
@@ -213,8 +229,31 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
     } else if (step === 'subject' && selectedSubject) {
       setStep('chapter');
     } else if (step === 'chapter' && selectedChapter) {
+      setStep('contentType');
+    } else if (step === 'contentType' && selectedContentType) {
       setStep('content');
     }
+  };
+
+  const getStepNumber = () => {
+    switch (step) {
+      case 'batch': return 1;
+      case 'subject': return 2;
+      case 'chapter': return 3;
+      case 'contentType': return 4;
+      case 'content': return 5;
+      default: return 1;
+    }
+  };
+
+  const getContentTypeIcon = (type: string) => {
+    const contentType = contentTypes.find(ct => ct.value === type);
+    return contentType?.icon || FileText;
+  };
+
+  const getContentTypeColor = (type: string) => {
+    const contentType = contentTypes.find(ct => ct.value === type);
+    return contentType?.color || 'from-gray-500 to-gray-600';
   };
 
   return (
@@ -228,7 +267,7 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
               </Button>
             )}
             <DialogTitle>
-              Schedule Item - Step {step === 'batch' ? '1' : step === 'subject' ? '2' : step === 'chapter' ? '3' : '4'} of 4
+              Schedule Item - Step {getStepNumber()} of 5
             </DialogTitle>
           </div>
         </DialogHeader>
@@ -236,32 +275,39 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
         <div className="space-y-6">
           {/* Date Selection */}
           <div>
-            <label className="block text-sm font-medium mb-2">Scheduled Date</label>
+            <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Scheduled Date
+            </label>
             <input
               type="date"
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
-              className="w-full p-2 bg-slate-700 border border-slate-600 rounded text-white"
+              className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
           {/* Step Content */}
           {step === 'batch' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Select Batch</h3>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                Select Batch
+              </h3>
               <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
                 {batches.map((batch) => (
                   <Card
                     key={batch.id}
-                    className={`p-4 cursor-pointer transition-all ${
+                    className={`p-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                       selectedBatch?.id === batch.id
-                        ? 'bg-indigo-600/20 border-indigo-500'
+                        ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border-indigo-500 shadow-lg'
                         : 'bg-slate-700/50 hover:bg-slate-700 border-slate-600'
                     }`}
                     onClick={() => setSelectedBatch(batch)}
                   >
-                    <h4 className="font-medium">{batch.name}</h4>
+                    <h4 className="font-medium text-lg">{batch.name}</h4>
                     <p className="text-sm text-slate-400">{batch.date}</p>
+                    <p className="text-xs text-slate-500 mt-1">{batch.sources} sources</p>
                   </Card>
                 ))}
               </div>
@@ -270,19 +316,22 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
 
           {step === 'subject' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Select Subject</h3>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                Select Subject
+              </h3>
               <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
                 {subjects.map((subject) => (
                   <Card
                     key={subject.id}
-                    className={`p-4 cursor-pointer transition-all ${
+                    className={`p-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                       selectedSubject?.id === subject.id
-                        ? 'bg-indigo-600/20 border-indigo-500'
+                        ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border-indigo-500 shadow-lg'
                         : 'bg-slate-700/50 hover:bg-slate-700 border-slate-600'
                     }`}
                     onClick={() => setSelectedSubject(subject)}
                   >
-                    <h4 className="font-medium">{subject.name}</h4>
+                    <h4 className="font-medium text-lg">{subject.name}</h4>
                   </Card>
                 ))}
               </div>
@@ -291,82 +340,142 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
 
           {step === 'chapter' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Select Chapter</h3>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                Select Chapter
+              </h3>
               <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
                 {chapters.map((chapter) => (
                   <Card
                     key={chapter.id}
-                    className={`p-4 cursor-pointer transition-all ${
+                    className={`p-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                       selectedChapter?.id === chapter.id
-                        ? 'bg-indigo-600/20 border-indigo-500'
+                        ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border-indigo-500 shadow-lg'
                         : 'bg-slate-700/50 hover:bg-slate-700 border-slate-600'
                     }`}
                     onClick={() => setSelectedChapter(chapter)}
                   >
-                    <h4 className="font-medium">{chapter.name}</h4>
+                    <h4 className="font-medium text-lg">{chapter.name}</h4>
                   </Card>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {step === 'contentType' && (
+            <div>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">4</div>
+                What would you like to schedule?
+              </h3>
+              <p className="text-slate-400 mb-6">Choose the type of content you want to add to your schedule</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {contentTypes.map((type) => {
+                  const Icon = type.icon;
+                  return (
+                    <Card
+                      key={type.value}
+                      className={`p-6 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                        selectedContentType === type.value
+                          ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border-indigo-500 shadow-lg'
+                          : 'bg-slate-700/50 hover:bg-slate-700 border-slate-600'
+                      }`}
+                      onClick={() => setSelectedContentType(type.value)}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className={`w-12 h-12 bg-gradient-to-r ${type.color} rounded-lg flex items-center justify-center`}>
+                          <Icon className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg text-white">{type.label}</h4>
+                          <p className="text-sm text-slate-400 mt-1">{type.description}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {step === 'content' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Select Content Item</h3>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">5</div>
+                Select {contentTypes.find(ct => ct.value === selectedContentType)?.label}
+              </h3>
               <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
-                {contentItems.map((item) => (
-                  <Card
-                    key={item.id}
-                    className={`p-4 cursor-pointer transition-all ${
-                      selectedContent?.id === item.id
-                        ? 'bg-indigo-600/20 border-indigo-500'
-                        : 'bg-slate-700/50 hover:bg-slate-700 border-slate-600'
-                    }`}
-                    onClick={() => setSelectedContent(item)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-medium">{item.name}</h4>
-                        <p className="text-sm text-slate-400 capitalize">
-                          {item.item_type.slice(0, -1)} #{item.number}
-                        </p>
-                      </div>
+                {contentItems.length > 0 ? (
+                  contentItems.map((item) => {
+                    const Icon = getContentTypeIcon(item.item_type);
+                    const colorClass = getContentTypeColor(item.item_type);
+                    return (
+                      <Card
+                        key={item.id}
+                        className={`p-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                          selectedContent?.id === item.id
+                            ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border-indigo-500 shadow-lg'
+                            : 'bg-slate-700/50 hover:bg-slate-700 border-slate-600'
+                        }`}
+                        onClick={() => setSelectedContent(item)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 bg-gradient-to-r ${colorClass} rounded-lg flex items-center justify-center`}>
+                            <Icon className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-lg">{item.name}</h4>
+                            <p className="text-sm text-slate-400 capitalize">
+                              {item.item_type.slice(0, -1)} #{item.number}
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FileText className="w-8 h-8 text-slate-400" />
                     </div>
-                  </Card>
-                ))}
+                    <p className="text-slate-400">No {selectedContentType} found for this chapter</p>
+                    <p className="text-sm text-slate-500 mt-1">Try creating some content first</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between pt-4">
+          <div className="flex justify-between pt-6 border-t border-slate-700">
             <Button
               onClick={handleClose}
               variant="outline"
-              className="border-slate-600 hover:bg-slate-700"
+              className="border-slate-600 hover:bg-slate-700 text-white"
             >
               Cancel
             </Button>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               {step !== 'content' ? (
                 <Button
                   onClick={handleNext}
                   disabled={
                     !selectedBatch ||
                     (step === 'subject' && !selectedSubject) ||
-                    (step === 'chapter' && !selectedChapter)
+                    (step === 'chapter' && !selectedChapter) ||
+                    (step === 'contentType' && !selectedContentType)
                   }
-                  className="bg-indigo-600 hover:bg-indigo-700"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6"
                 >
-                  Next
+                  Next Step
                 </Button>
               ) : (
                 <Button
                   onClick={handleScheduleItem}
                   disabled={!selectedContent || isLoading}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6"
                 >
-                  {isLoading ? 'Scheduling...' : 'Schedule Item'}
+                  {isLoading ? 'Scheduling...' : '✓ Schedule Item'}
                 </Button>
               )}
             </div>
