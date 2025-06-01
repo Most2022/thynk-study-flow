@@ -57,7 +57,7 @@ const Index = () => {
     fetchBatches();
   }, [user]);
 
-  const handleCreateBatch = async (name: string, date: string) => {
+  const createBatch = async (name: string, date: string) => {
     if (!user) {
       toast.error("You must be logged in to create a batch.");
       return;
@@ -81,6 +81,12 @@ const Index = () => {
       setShowCreateModal(false);
       toast.success("Batch created successfully!");
     }
+  };
+
+  const handleCreateBatch = (name: string) => {
+    // Use current date if only name is provided
+    const currentDate = new Date().toISOString().split('T')[0];
+    createBatch(name, currentDate);
   };
 
   const handleStudyBatch = (batch: Batch) => {
