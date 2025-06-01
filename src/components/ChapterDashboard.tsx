@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -70,7 +71,7 @@ interface Target {
 
 const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardProps) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<ChapterContentType | 'targets'>('lectures'); // Added 'targets' tab
+  const [activeTab, setActiveTab] = useState<ChapterContentType | 'targets'>('lectures');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [content, setContent] = useState<ChapterContent>({
     lectures: [],
@@ -85,17 +86,16 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
   const [currentChapterId, setCurrentChapterId] = useState<string | null>(null);
   const [targets, setTargets] = useState<Target[]>([]);
   const [isLoadingTargets, setIsLoadingTargets] = useState(true);
+  const [isLoadingContent, setIsLoadingContent] = useState(true);
   const [showCreateTargetModal, setShowCreateTargetModal] = useState(false);
   const [showDeleteTargetDialog, setShowDeleteTargetDialog] = useState(false);
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null);
-
-  const storageKey = `thynk-${batch.id}-${subject.toLowerCase()}-${chapter.toLowerCase().replace(/\s+/g, '-')}-content`;
 
   // Fetch Chapter ID
   useEffect(() => {
     const fetchChapterId = async () => {
       if (!user || !batch?.id || !subject || !chapter) return;
-      // console.log("Fetching chapter ID for:", { batchId: batch.id, subjectName: subject, chapterName: chapter, userId: user.id });
+      
       try {
         // First, get subject_id
         const { data: subjectData, error: subjectError } = await supabase
@@ -107,12 +107,10 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
           .single();
 
         if (subjectError || !subjectData) {
-          // console.error("Error fetching subject ID:", subjectError);
           toast.error(`Failed to find subject "${subject}" for batch "${batch.name}".`);
           setCurrentChapterId(null);
           return;
         }
-        // console.log("Fetched subject ID:", subjectData.id);
 
         // Then, get chapter_id
         const { data: chapterData, error: chapterError } = await supabase
@@ -124,21 +122,78 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
           .single();
         
         if (chapterError || !chapterData) {
-          // console.error("Error fetching chapter ID:", chapterError);
-          // toast.error(`Failed to find chapter "${chapter}" under subject "${subject}". Ensure it exists.`);
-          setCurrentChapterId(null); // This might indicate the chapter doesn't exist for this user/subject/batch combination
+          setCurrentChapterId(null);
           return;
         }
-        // console.log("Fetched chapter ID:", chapterData.id);
+        
         setCurrentChapterId(chapterData.id);
       } catch (e) {
-        // console.error("Exception in fetchChapterId:", e);
         toast.error("An error occurred while identifying the chapter.");
         setCurrentChapterId(null);
       }
     };
     fetchChapterId();
   }, [batch, subject, chapter, user]);
+
+  // Fetch content items from Supabase
+  const fetchContentItems = async () => {
+    if (!user || !currentChapterId) {
+      setContent({
+        lectures: [],
+        notes: [],
+        dpps: [],
+        homework: []
+      });
+      setIsLoadingContent(false);
+      return;
+    }
+
+    setIsLoadingContent(true);
+    
+    const { data, error } = await supabase
+      .from('content_items')
+      .select('*')
+      .eq('chapter_id', currentChapterId)
+      .eq('user_id', user.id)
+      .order('number', { ascending: true });
+
+    if (error) {
+      toast.error(`Failed to fetch content items: ${error.message}`);
+      setContent({
+        lectures: [],
+        notes: [],
+        dpps: [],
+        homework: []
+      });
+    } else {
+      // Group content items by type
+      const groupedContent: ChapterContent = {
+        lectures: [],
+        notes: [],
+        dpps: [],
+        homework: []
+      };
+
+      (data || []).forEach(item => {
+        const contentItem: ContentItem = {
+          id: item.id,
+          name: item.name,
+          status: item.status || 'incomplete',
+          revisionCount: item.revision_count || 0,
+          number: item.number
+        };
+
+        groupedContent[item.item_type].push(contentItem);
+      });
+
+      setContent(groupedContent);
+    }
+    setIsLoadingContent(false);
+  };
+
+  useEffect(() => {
+    fetchContentItems();
+  }, [currentChapterId, user]);
 
   // Fetch Targets when chapterId is available
   const fetchTargets = async () => {
@@ -148,7 +203,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
       return;
     }
     setIsLoadingTargets(true);
-    // console.log("Fetching targets for chapter ID:", currentChapterId);
+    
     const { data, error } = await supabase
       .from('targets')
       .select('*')
@@ -157,11 +212,9 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
       .order('created_at', { ascending: true });
 
     if (error) {
-      // console.error("Error fetching targets:", error);
       toast.error(`Failed to fetch targets: ${error.message}`);
       setTargets([]);
     } else {
-      // console.log("Fetched targets:", data);
       setTargets(data || []);
     }
     setIsLoadingTargets(false);
@@ -171,26 +224,6 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
     fetchTargets();
   }, [currentChapterId, user]);
 
-  useEffect(() => {
-    const savedContent = localStorage.getItem(storageKey);
-    if (savedContent) {
-      setContent(JSON.parse(savedContent));
-    } else {
-      // Initialize with empty arrays if nothing in storage
-      setContent({
-        lectures: [],
-        notes: [],
-        dpps: [],
-        homework: []
-      });
-    }
-  }, [storageKey]);
-
-  const saveContent = (newContent: ChapterContent) => {
-    setContent(newContent);
-    localStorage.setItem(storageKey, JSON.stringify(newContent));
-  };
-
   const calculateProgress = () => {
     const allItems = [...content.lectures, ...content.notes, ...content.dpps, ...content.homework];
     if (allItems.length === 0) return 0;
@@ -198,51 +231,84 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
     return Math.round((completed / allItems.length) * 100);
   };
 
-  const handleCreateContent = (type: string, count: number, namePrefix: string) => {
+  const handleCreateContent = async (type: string, count: number, namePrefix: string) => {
+    if (!user || !currentChapterId) {
+      toast.error("Chapter information not available");
+      return;
+    }
+
     const itemType = type as ChapterContentType;
     const existingItems = content[itemType] || [];
     const lastNumber = existingItems.length > 0 ? Math.max(0, ...existingItems.map(item => item.number)) : 0;
     
-    const newItems: ContentItem[] = Array.from({ length: count }, (_, i) => ({
-      id: `${itemType}-${Date.now()}-${i}`,
-      name: `${namePrefix}`,
-      status: 'incomplete',
-      number: lastNumber + i + 1
+    // Create array of items to insert
+    const itemsToInsert = Array.from({ length: count }, (_, i) => ({
+      name: namePrefix,
+      item_type: itemType,
+      number: lastNumber + i + 1,
+      chapter_id: currentChapterId,
+      user_id: user.id,
+      status: 'incomplete' as const,
+      revision_count: 0
     }));
 
-    const updatedContent = {
-      ...content,
-      [itemType]: [...existingItems, ...newItems]
-    };
+    const { data, error } = await supabase
+      .from('content_items')
+      .insert(itemsToInsert)
+      .select();
 
-    saveContent(updatedContent);
-    setShowCreateModal(false);
+    if (error) {
+      toast.error(`Failed to create ${type}: ${error.message}`);
+    } else {
+      toast.success(`${count} ${type} created successfully!`);
+      fetchContentItems(); // Refresh the content
+      setShowCreateModal(false);
+    }
   };
 
-  const handleStatusChange = (type: string, itemId: string, newStatus: string) => {
-    const itemType = type as ChapterContentType;
-    const updatedContent = {
-      ...content,
-      [itemType]: content[itemType].map(item => 
-        item.id === itemId 
-          ? { 
-              ...item, 
-              status: newStatus as 'completed' | 'incomplete' | 'revision',
-              revisionCount: newStatus === 'revision' ? (item.revisionCount || 0) + 1 : item.revisionCount
-            }
-          : item
-      )
+  const handleStatusChange = async (type: string, itemId: string, newStatus: string) => {
+    if (!user) return;
+
+    const updateData: any = {
+      status: newStatus
     };
-    saveContent(updatedContent);
+
+    // If setting to revision, increment revision count
+    if (newStatus === 'revision') {
+      const currentItem = content[type as ChapterContentType].find(item => item.id === itemId);
+      if (currentItem) {
+        updateData.revision_count = (currentItem.revisionCount || 0) + 1;
+      }
+    }
+
+    const { error } = await supabase
+      .from('content_items')
+      .update(updateData)
+      .eq('id', itemId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error(`Failed to update status: ${error.message}`);
+    } else {
+      fetchContentItems(); // Refresh the content
+    }
   };
 
-  const handleDeleteItem = (type: string, itemId: string) => {
-    const itemType = type as ChapterContentType;
-    const updatedContent = {
-      ...content,
-      [itemType]: content[itemType].filter(item => item.id !== itemId)
-    };
-    saveContent(updatedContent);
+  const handleDeleteItem = async (type: string, itemId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('content_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error(`Failed to delete item: ${error.message}`);
+    } else {
+      toast.success("Item deleted successfully");
+      fetchContentItems(); // Refresh the content
+    }
   };
 
   const handleOpenEditModal = (itemToEdit: ContentItem, type: string) => {
@@ -250,19 +316,23 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
     setShowEditModal(true);
   };
 
-  const handleSaveEditedItem = (newName: string) => {
-    if (!editingItem) return;
+  const handleSaveEditedItem = async (newName: string) => {
+    if (!editingItem || !user) return;
 
-    const { id, type } = editingItem;
-    const updatedContent = {
-      ...content,
-      [type]: content[type].map(item =>
-        item.id === id ? { ...item, name: newName } : item
-      )
-    };
-    saveContent(updatedContent);
-    setShowEditModal(false);
-    setEditingItem(null);
+    const { error } = await supabase
+      .from('content_items')
+      .update({ name: newName })
+      .eq('id', editingItem.id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error(`Failed to update item: ${error.message}`);
+    } else {
+      toast.success("Item updated successfully");
+      fetchContentItems(); // Refresh the content
+      setShowEditModal(false);
+      setEditingItem(null);
+    }
   };
 
   const getItemTypeSingular = (type: ChapterContentType | null): string => {
@@ -295,7 +365,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
   
   const handleUpdateTargetProgress = async (targetId: string, newProgress: number) => {
     if (!user) return;
-    const progress = Math.max(0, Math.min(100, newProgress)); // Ensure progress is between 0 and 100
+    const progress = Math.max(0, Math.min(100, newProgress));
 
     const { error } = await supabase
       .from('targets')
@@ -306,7 +376,6 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
     if (error) {
       toast.error(`Failed to update target progress: ${error.message}`);
     } else {
-      // toast.success("Target progress updated!");
       setTargets(prevTargets => 
         prevTargets.map(t => t.id === targetId ? { ...t, progress } : t)
       );
@@ -382,13 +451,17 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
 
           {(['lectures', 'notes', 'dpps', 'homework'] as ChapterContentType[]).map((contentType) => (
             <TabsContent key={contentType} value={contentType} className="mt-6">
-              <ContentSection 
-                items={content[contentType]}
-                type={contentType}
-                onStatusChange={handleStatusChange}
-                onDeleteItem={handleDeleteItem}
-                onEditItem={handleOpenEditModal}
-              />
+              {isLoadingContent ? (
+                <div className="text-center py-10 text-white">Loading {contentType}...</div>
+              ) : (
+                <ContentSection 
+                  items={content[contentType]}
+                  type={contentType}
+                  onStatusChange={handleStatusChange}
+                  onDeleteItem={handleDeleteItem}
+                  onEditItem={handleOpenEditModal}
+                />
+              )}
             </TabsContent>
           ))}
 
@@ -452,7 +525,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           onCreateContent={handleCreateContent}
-          activeTab={activeTab === 'targets' ? 'lectures' : activeTab} // Pass a default content type if targets tab is active
+          activeTab={activeTab === 'targets' ? 'lectures' : activeTab}
         />
 
         {editingItem && (
@@ -473,7 +546,7 @@ const ChapterDashboard = ({ batch, subject, chapter, onBack }: ChapterDashboardP
             isOpen={showCreateTargetModal}
             onClose={() => setShowCreateTargetModal(false)}
             chapterId={currentChapterId}
-            onTargetCreated={fetchTargets} // Refresh targets list after creation
+            onTargetCreated={fetchTargets}
           />
         )}
 
