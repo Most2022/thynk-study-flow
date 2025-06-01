@@ -121,6 +121,69 @@ export type Database = {
           },
         ]
       }
+      scheduled_items: {
+        Row: {
+          batch_id: string
+          chapter_name: string
+          content_item_id: string
+          created_at: string
+          id: string
+          is_completed: boolean
+          item_name: string
+          item_number: number
+          item_type: string
+          scheduled_date: string
+          subject_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          chapter_name: string
+          content_item_id: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          item_name: string
+          item_number: number
+          item_type: string
+          scheduled_date?: string
+          subject_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          chapter_name?: string
+          content_item_id?: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          item_name?: string
+          item_number?: number
+          item_type?: string
+          scheduled_date?: string
+          subject_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_scheduled_items_batch"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_scheduled_items_content"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           batch_id: string

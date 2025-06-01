@@ -8,6 +8,7 @@ import ChapterSelectionDashboard from '@/components/ChapterSelectionDashboard';
 import ChapterDashboard from '@/components/ChapterDashboard';
 import CreateBatchModal from '@/components/CreateBatchModal';
 import AuthForm from '@/components/AuthForm';
+import ScheduledItemsSection from '@/components/ScheduledItemsSection';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -200,38 +201,48 @@ const Index = () => {
           </div>
         </div>
 
-        {isLoadingBatches && (
-          <div className="text-center py-10 text-white">Loading batches...</div>
-        )}
+        {/* Scheduled Items Section */}
+        <div className="mb-12">
+          <ScheduledItemsSection />
+        </div>
 
-        {!isLoadingBatches && batches.length === 0 && (
-          <div className="text-center py-20">
-            <BookOpen className="w-16 h-16 text-white/40 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">No batches yet</h2>
-            <p className="text-slate-400 mb-8">Create your first batch to get started</p>
-            <Button 
-              onClick={() => setShowCreateModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create your first batch
-            </Button>
-          </div>
-        )}
+        {/* Batches Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-6">Your Batches</h2>
+          
+          {isLoadingBatches && (
+            <div className="text-center py-10 text-white">Loading batches...</div>
+          )}
 
-        {!isLoadingBatches && batches.length > 0 && (
-          <Card className="bg-white/5 border-white/10 backdrop-blur-sm p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {batches.map((batch) => (
-                <BatchCard
-                  key={batch.id}
-                  batch={batch}
-                  onStudy={() => handleStudyBatch(batch)}
-                />
-              ))}
+          {!isLoadingBatches && batches.length === 0 && (
+            <div className="text-center py-20">
+              <BookOpen className="w-16 h-16 text-white/40 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-white mb-2">No batches yet</h3>
+              <p className="text-slate-400 mb-8">Create your first batch to get started</p>
+              <Button 
+                onClick={() => setShowCreateModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create your first batch
+              </Button>
             </div>
-          </Card>
-        )}
+          )}
+
+          {!isLoadingBatches && batches.length > 0 && (
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {batches.map((batch) => (
+                  <BatchCard
+                    key={batch.id}
+                    batch={batch}
+                    onStudy={() => handleStudyBatch(batch)}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
 
         <CreateBatchModal 
           isOpen={showCreateModal}
