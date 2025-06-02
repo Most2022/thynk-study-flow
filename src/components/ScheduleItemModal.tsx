@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,6 +8,9 @@ import { ArrowLeft, Calendar, Plus, BookOpen, FileText, Target, PenTool, Graduat
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
+
+type ContentItemType = Database['public']['Enums']['content_item_type'];
 
 interface Batch {
   id: string;
@@ -42,11 +46,10 @@ interface ScheduleItemModalProps {
 }
 
 const contentTypes = [
-  { value: 'lectures', label: 'Lectures', icon: GraduationCap, color: 'from-blue-500 to-blue-600', description: 'Video lectures and recorded sessions' },
-  { value: 'notes', label: 'Notes', icon: FileText, color: 'from-green-500 to-green-600', description: 'Study notes and written materials' },
-  { value: 'dpps', label: 'DPPs', icon: BookOpen, color: 'from-purple-500 to-purple-600', description: 'Daily Practice Problems' },
-  { value: 'homeworks', label: 'Homework', icon: PenTool, color: 'from-orange-500 to-orange-600', description: 'Assignments and homework tasks' },
-  { value: 'targets', label: 'Targets', icon: Target, color: 'from-red-500 to-red-600', description: 'Goals and milestones' }
+  { value: 'lectures' as ContentItemType, label: 'Lectures', icon: GraduationCap, color: 'from-blue-500 to-blue-600', description: 'Video lectures and recorded sessions' },
+  { value: 'notes' as ContentItemType, label: 'Notes', icon: FileText, color: 'from-green-500 to-green-600', description: 'Study notes and written materials' },
+  { value: 'dpps' as ContentItemType, label: 'DPPs', icon: BookOpen, color: 'from-purple-500 to-purple-600', description: 'Daily Practice Problems' },
+  { value: 'homework' as ContentItemType, label: 'Homework', icon: PenTool, color: 'from-orange-500 to-orange-600', description: 'Assignments and homework tasks' }
 ];
 
 const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModalProps) => {
@@ -55,7 +58,7 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
-  const [selectedContentType, setSelectedContentType] = useState<string>('');
+  const [selectedContentType, setSelectedContentType] = useState<ContentItemType | ''>('');
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
   const [scheduledDate, setScheduledDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
@@ -148,7 +151,7 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
       .select('*')
       .eq('chapter_id', selectedChapter.id)
       .eq('user_id', user.id)
-      .eq('item_type', selectedContentType)
+      .eq('item_type', selectedContentType as ContentItemType)
       .order('number', { ascending: true });
 
     if (error) {
