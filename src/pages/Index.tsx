@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Plus, BookOpen } from 'lucide-react';
+import { Plus, BookOpen, TrendingUp } from 'lucide-react';
 import BatchCard from '@/components/BatchCard';
 import SubjectDashboard from '@/components/SubjectDashboard';
 import ChapterSelectionDashboard from '@/components/ChapterSelectionDashboard';
@@ -9,6 +9,7 @@ import ChapterDashboard from '@/components/ChapterDashboard';
 import CreateBatchModal from '@/components/CreateBatchModal';
 import AuthForm from '@/components/AuthForm';
 import ScheduledItemsSection from '@/components/ScheduledItemsSection';
+import BatchProgressCard from '@/components/BatchProgressCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,6 +19,7 @@ interface Batch {
   name: string;
   date: string;
   sources: number;
+  target_percentage?: number;
 }
 
 const Index = () => {
@@ -126,6 +128,22 @@ const Index = () => {
     setSelectedChapter('');
   };
 
+  const refreshBatches = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('batches')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast.error(`Failed to refresh batches: ${error.message}`);
+    } else {
+      setBatches(data || []);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -205,6 +223,31 @@ const Index = () => {
         <div className="mb-12">
           <ScheduledItemsSection />
         </div>
+
+        {/* Batch Progress Section */}
+        {!isLoadingBatches && batches.length > 0 && (
+          <div className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Batch Progress</h2>
+                <p className="text-slate-400">Track your study goals and achievements</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {batches.map((batch) => (
+                <BatchProgressCard
+                  key={batch.id}
+                  batch={batch}
+                  onUpdateProgress={refreshBatches}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Batches Section */}
         <div className="mb-8">

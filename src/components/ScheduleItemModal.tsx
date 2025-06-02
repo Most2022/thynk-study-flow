@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Calendar, Plus, BookOpen, FileText, Target, PenTool, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Calendar, Plus, BookOpen, FileText, Target, PenTool, GraduationCap, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ interface Batch {
   name: string;
   date: string;
   sources: number;
+  target_percentage?: number;
 }
 
 interface Subject {
@@ -58,7 +59,7 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [selectedContentType, setSelectedContentType] = useState<ContentItemType | ''>('');
-  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
+  const [selectedContent, setSelectedContent] = useState<ContentItem[]>([]);
   const [scheduledDate, setScheduledDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -169,35 +170,66 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
     setIsLoading(false);
   };
 
-  const handleScheduleItem = async () => {
-    if (!user || !selectedBatch || !selectedSubject || !selectedChapter || !selectedContent) {
-      toast.error("Please select all required fields");
+  const handleScheduleItems = async () => {
+    if (!user || !selectedBatch || !selectedSubject || !selectedChapter || selectedContent.length === 0) {
+      toast.error("Please select all required fields and at least one content item");
       return;
     }
 
     setIsLoading(true);
-    const { error } = await supabase
-      .from('scheduled_items')
-      .insert({
-        user_id: user.id,
-        batch_id: selectedBatch.id,
-        subject_name: selectedSubject.name,
-        chapter_name: selectedChapter.name,
-        content_item_id: selectedContent.id,
-        item_type: selectedContent.item_type,
-        item_name: selectedContent.name,
-        item_number: selectedContent.number,
-        scheduled_date: scheduledDate,
-      });
+    
+    try {
+      // Schedule multiple items
+      const schedulePromises = selectedContent.map(content => 
+        supabase
+          .from('scheduled_items')
+          .insert({
+            user_id: user.id,
+            batch_id: selectedBatch.id,
+            subject_name: selectedSubject.name,
+            chapter_name: selectedChapter.name,
+            content_item_id: content.id,
+            item_type: content.item_type,
+            item_name: content.name,
+            item_number: content.number,
+            scheduled_date: scheduledDate,
+          })
+      );
 
-    if (error) {
-      toast.error(`Failed to schedule item: ${error.message}`);
-    } else {
-      toast.success("Item scheduled successfully!");
-      onScheduleItem();
-      handleClose();
+      const results = await Promise.all(schedulePromises);
+      const errors = results.filter(result => result.error);
+
+      if (errors.length > 0) {
+        toast.error(`Failed to schedule ${errors.length} item(s)`);
+      } else {
+        toast.success(`Successfully scheduled ${selectedContent.length} item(s)!`);
+        onScheduleItem();
+        handleClose();
+      }
+    } catch (error) {
+      toast.error("An error occurred while scheduling items");
     }
+    
     setIsLoading(false);
+  };
+
+  const handleContentToggle = (content: ContentItem) => {
+    setSelectedContent(prev => {
+      const isSelected = prev.some(item => item.id === content.id);
+      if (isSelected) {
+        return prev.filter(item => item.id !== content.id);
+      } else {
+        return [...prev, content];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedContent.length === contentItems.length) {
+      setSelectedContent([]);
+    } else {
+      setSelectedContent([...contentItems]);
+    }
   };
 
   const handleClose = () => {
@@ -206,7 +238,7 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
     setSelectedSubject(null);
     setSelectedChapter(null);
     setSelectedContentType('');
-    setSelectedContent(null);
+    setSelectedContent([]);
     setScheduledDate(new Date().toISOString().split('T')[0]);
     onClose();
   };
@@ -217,19 +249,19 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
       setSelectedSubject(null);
       setSelectedChapter(null);
       setSelectedContentType('');
-      setSelectedContent(null);
+      setSelectedContent([]);
     } else if (step === 'chapter') {
       setStep('subject');
       setSelectedChapter(null);
       setSelectedContentType('');
-      setSelectedContent(null);
+      setSelectedContent([]);
     } else if (step === 'contentType') {
       setStep('chapter');
       setSelectedContentType('');
-      setSelectedContent(null);
+      setSelectedContent([]);
     } else if (step === 'content') {
       setStep('contentType');
-      setSelectedContent(null);
+      setSelectedContent([]);
     }
   };
 
@@ -277,7 +309,7 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
               </Button>
             )}
             <DialogTitle>
-              Schedule Item - Step {getStepNumber()} of 5
+              Schedule Items - Step {getStepNumber()} of 5
             </DialogTitle>
           </div>
         </DialogHeader>
@@ -410,24 +442,47 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
 
           {step === 'content' && (
             <div>
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">5</div>
-                Select {contentTypes.find(ct => ct.value === selectedContentType)?.label}
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">5</div>
+                  Select {contentTypes.find(ct => ct.value === selectedContentType)?.label}
+                </h3>
+                {contentItems.length > 0 && (
+                  <Button
+                    onClick={handleSelectAll}
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-600 hover:bg-slate-700 text-white"
+                  >
+                    {selectedContent.length === contentItems.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                )}
+              </div>
+              
+              {selectedContent.length > 0 && (
+                <div className="mb-4 p-3 bg-indigo-600/20 border border-indigo-500/30 rounded-lg">
+                  <p className="text-sm text-indigo-300">
+                    {selectedContent.length} item(s) selected for scheduling
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
                 {contentItems.length > 0 ? (
                   contentItems.map((item) => {
                     const Icon = getContentTypeIcon(item.item_type);
                     const colorClass = getContentTypeColor(item.item_type);
+                    const isSelected = selectedContent.some(content => content.id === item.id);
+                    
                     return (
                       <Card
                         key={item.id}
                         className={`p-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
-                          selectedContent?.id === item.id
+                          isSelected
                             ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/30 border-indigo-500 shadow-lg'
                             : 'bg-slate-700/50 hover:bg-slate-700 border-slate-600'
                         }`}
-                        onClick={() => setSelectedContent(item)}
+                        onClick={() => handleContentToggle(item)}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 bg-gradient-to-r ${colorClass} rounded-lg flex items-center justify-center`}>
@@ -439,6 +494,9 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
                               {item.item_type.slice(0, -1)} #{item.number}
                             </p>
                           </div>
+                          {isSelected && (
+                            <CheckCircle className="w-5 h-5 text-indigo-400" />
+                          )}
                         </div>
                       </Card>
                     );
@@ -481,11 +539,11 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
                 </Button>
               ) : (
                 <Button
-                  onClick={handleScheduleItem}
-                  disabled={!selectedContent || isLoading}
+                  onClick={handleScheduleItems}
+                  disabled={selectedContent.length === 0 || isLoading}
                   className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6"
                 >
-                  {isLoading ? 'Scheduling...' : '✓ Schedule Item'}
+                  {isLoading ? 'Scheduling...' : `✓ Schedule ${selectedContent.length} Item(s)`}
                 </Button>
               )}
             </div>

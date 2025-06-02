@@ -16,6 +16,7 @@ export type Database = {
           id: string
           name: string
           sources: number | null
+          target_percentage: number | null
           updated_at: string | null
           user_id: string
         }
@@ -25,6 +26,7 @@ export type Database = {
           id?: string
           name: string
           sources?: number | null
+          target_percentage?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -34,6 +36,7 @@ export type Database = {
           id?: string
           name?: string
           sources?: number | null
+          target_percentage?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -134,6 +137,7 @@ export type Database = {
           item_type: string
           scheduled_date: string
           subject_name: string
+          target_id: string | null
           updated_at: string
           user_id: string
         }
@@ -149,6 +153,7 @@ export type Database = {
           item_type: string
           scheduled_date?: string
           subject_name: string
+          target_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -164,6 +169,7 @@ export type Database = {
           item_type?: string
           scheduled_date?: string
           subject_name?: string
+          target_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -180,6 +186,13 @@ export type Database = {
             columns: ["content_item_id"]
             isOneToOne: false
             referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_items_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "targets"
             referencedColumns: ["id"]
           },
         ]
