@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -87,10 +86,10 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
   }, [selectedSubject]);
 
   useEffect(() => {
-    if (selectedChapter) {
+    if (selectedChapter && selectedContentType) {
       fetchContentItems();
     }
-  }, [selectedChapter]);
+  }, [selectedChapter, selectedContentType]);
 
   const fetchBatches = async () => {
     if (!user) return;
@@ -146,6 +145,12 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
   const fetchContentItems = async () => {
     if (!user || !selectedChapter || !selectedContentType) return;
     setIsLoading(true);
+    console.log('Fetching content items with:', {
+      chapter_id: selectedChapter.id,
+      user_id: user.id,
+      item_type: selectedContentType
+    });
+    
     const { data, error } = await supabase
       .from('content_items')
       .select('*')
@@ -155,8 +160,10 @@ const ScheduleItemModal = ({ isOpen, onClose, onScheduleItem }: ScheduleItemModa
       .order('number', { ascending: true });
 
     if (error) {
+      console.error('Error fetching content items:', error);
       toast.error(`Failed to fetch content items: ${error.message}`);
     } else {
+      console.log('Fetched content items:', data);
       setContentItems(data || []);
     }
     setIsLoading(false);
