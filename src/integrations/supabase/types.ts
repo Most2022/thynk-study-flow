@@ -9,37 +9,37 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      batch_targets: {
+      batch_tasks: {
         Row: {
           batch_id: string
           created_at: string
-          end_date: string
+          description: string | null
           id: string
-          start_date: string
-          target_type: string
-          target_value: number
+          is_completed: boolean
+          task_type: string
+          title: string
           updated_at: string
           user_id: string
         }
         Insert: {
           batch_id: string
           created_at?: string
-          end_date: string
+          description?: string | null
           id?: string
-          start_date: string
-          target_type: string
-          target_value: number
+          is_completed?: boolean
+          task_type: string
+          title: string
           updated_at?: string
           user_id: string
         }
         Update: {
           batch_id?: string
           created_at?: string
-          end_date?: string
+          description?: string | null
           id?: string
-          start_date?: string
-          target_type?: string
-          target_value?: number
+          is_completed?: boolean
+          task_type?: string
+          title?: string
           updated_at?: string
           user_id?: string
         }

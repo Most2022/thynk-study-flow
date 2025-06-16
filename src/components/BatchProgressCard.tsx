@@ -1,12 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Target, TrendingUp, Calendar, BookOpen, Settings } from 'lucide-react';
+import { CheckSquare, TrendingUp, Calendar, BookOpen, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import BatchTargetModal from './BatchTargetModal';
+import BatchTaskModal from './BatchTaskModal';
 
 interface Batch {
   id: string;
@@ -16,12 +17,11 @@ interface Batch {
   target_percentage?: number;
 }
 
-interface BatchTarget {
+interface BatchTask {
   id: string;
-  target_type: 'weekly' | 'monthly';
-  target_value: number;
-  start_date: string;
-  end_date: string;
+  title: string;
+  task_type: 'weekly' | 'monthly';
+  is_completed: boolean;
 }
 
 interface BatchProgressCardProps {
@@ -35,13 +35,13 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
   const [totalItems, setTotalItems] = useState(0);
   const [completedItems, setCompletedItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [showTargetModal, setShowTargetModal] = useState(false);
-  const [currentTargets, setCurrentTargets] = useState<BatchTarget[]>([]);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [tasks, setTasks] = useState<BatchTask[]>([]);
 
   useEffect(() => {
     if (user && batch.id) {
       fetchBatchProgress();
-      fetchCurrentTargets();
+      fetchTasks();
     }
   }, [user, batch.id]);
 
@@ -76,29 +76,20 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
     }
   };
 
-  const fetchCurrentTargets = async () => {
+  const fetchTasks = async () => {
     if (!user) return;
 
-    const today = new Date().toISOString().split('T')[0];
-
     const { data, error } = await supabase
-      .from('batch_targets')
-      .select('*')
+      .from('batch_tasks')
+      .select('id, title, task_type, is_completed')
       .eq('user_id', user.id)
       .eq('batch_id', batch.id)
-      .lte('start_date', today)
-      .gte('end_date', today)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Failed to fetch current targets:', error);
+      console.error('Failed to fetch tasks:', error);
     } else {
-      // Type assertion to ensure target_type is properly typed
-      const typedTargets = (data || []).map(target => ({
-        ...target,
-        target_type: target.target_type as 'weekly' | 'monthly'
-      }));
-      setCurrentTargets(typedTargets);
+      setTasks(data || []);
     }
   };
 
@@ -140,16 +131,16 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
     }
   };
 
-  const getActiveTargetInfo = () => {
-    if (currentTargets.length === 0) return null;
+  const getTaskSummary = () => {
+    const weeklyTasks = tasks.filter(t => t.task_type === 'weekly');
+    const monthlyTasks = tasks.filter(t => t.task_type === 'monthly');
+    const completedWeekly = weeklyTasks.filter(t => t.is_completed).length;
+    const completedMonthly = monthlyTasks.filter(t => t.is_completed).length;
     
-    const weeklyTarget = currentTargets.find(t => t.target_type === 'weekly');
-    const monthlyTarget = currentTargets.find(t => t.target_type === 'monthly');
-    
-    return { weeklyTarget, monthlyTarget };
+    return { weeklyTasks, monthlyTasks, completedWeekly, completedMonthly };
   };
 
-  const activeTargets = getActiveTargetInfo();
+  const taskSummary = getTaskSummary();
 
   return (
     <Card className="bg-slate-800/50 border-slate-700/50 p-6">
@@ -173,29 +164,34 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
             <div className="text-sm text-slate-400">Progress</div>
           </div>
           <Button
-            onClick={() => setShowTargetModal(true)}
+            onClick={() => setShowTaskModal(true)}
             variant="ghost"
             size="sm"
             className="text-slate-400 hover:text-white hover:bg-slate-700"
           >
-            <Settings className="w-4 h-4" />
+            <CheckSquare className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* Active Targets Display */}
-      {activeTargets && (activeTargets.weeklyTarget || activeTargets.monthlyTarget) && (
+      {/* Task Summary Display */}
+      {tasks.length > 0 && (
         <div className="mb-4 space-y-2">
-          {activeTargets.weeklyTarget && (
+          <h4 className="text-sm font-medium text-slate-300">Your Tasks</h4>
+          {taskSummary.weeklyTasks.length > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-blue-400 font-medium">Weekly Target</span>
-              <span className="text-white">{activeTargets.weeklyTarget.target_value}%</span>
+              <span className="text-blue-400 font-medium">Weekly Tasks</span>
+              <span className="text-white">
+                {taskSummary.completedWeekly}/{taskSummary.weeklyTasks.length} completed
+              </span>
             </div>
           )}
-          {activeTargets.monthlyTarget && (
+          {taskSummary.monthlyTasks.length > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-purple-400 font-medium">Monthly Target</span>
-              <span className="text-white">{activeTargets.monthlyTarget.target_value}%</span>
+              <span className="text-purple-400 font-medium">Monthly Tasks</span>
+              <span className="text-white">
+                {taskSummary.completedMonthly}/{taskSummary.monthlyTasks.length} completed
+              </span>
             </div>
           )}
         </div>
@@ -252,13 +248,13 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
         </Button>
       </div>
 
-      <BatchTargetModal
-        isOpen={showTargetModal}
-        onClose={() => setShowTargetModal(false)}
+      <BatchTaskModal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
         batchId={batch.id}
         batchName={batch.name}
-        onTargetCreated={() => {
-          fetchCurrentTargets();
+        onTaskCreated={() => {
+          fetchTasks();
           onUpdateProgress();
         }}
       />
