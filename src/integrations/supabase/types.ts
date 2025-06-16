@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      batch_targets: {
+        Row: {
+          batch_id: string
+          created_at: string
+          end_date: string
+          id: string
+          start_date: string
+          target_type: string
+          target_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          start_date: string
+          target_type: string
+          target_value: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          start_date?: string
+          target_type?: string
+          target_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       batches: {
         Row: {
           created_at: string | null

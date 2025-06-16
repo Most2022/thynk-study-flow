@@ -3,10 +3,11 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Target, TrendingUp, Calendar, BookOpen } from 'lucide-react';
+import { Target, TrendingUp, Calendar, BookOpen, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import BatchTargetModal from './BatchTargetModal';
 
 interface Batch {
   id: string;
@@ -14,6 +15,14 @@ interface Batch {
   date: string;
   sources: number;
   target_percentage?: number;
+}
+
+interface BatchTarget {
+  id: string;
+  target_type: 'weekly' | 'monthly';
+  target_value: number;
+  start_date: string;
+  end_date: string;
 }
 
 interface BatchProgressCardProps {
@@ -27,10 +36,13 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
   const [totalItems, setTotalItems] = useState(0);
   const [completedItems, setCompletedItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [currentTargets, setCurrentTargets] = useState<BatchTarget[]>([]);
 
   useEffect(() => {
     if (user && batch.id) {
       fetchBatchProgress();
+      fetchCurrentTargets();
     }
   }, [user, batch.id]);
 
@@ -62,6 +74,27 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
       toast.error('Failed to fetch batch progress');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCurrentTargets = async () => {
+    if (!user) return;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('batch_targets')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('batch_id', batch.id)
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to fetch current targets:', error);
+    } else {
+      setCurrentTargets(data || []);
     }
   };
 
@@ -103,6 +136,17 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
     }
   };
 
+  const getActiveTargetInfo = () => {
+    if (currentTargets.length === 0) return null;
+    
+    const weeklyTarget = currentTargets.find(t => t.target_type === 'weekly');
+    const monthlyTarget = currentTargets.find(t => t.target_type === 'monthly');
+    
+    return { weeklyTarget, monthlyTarget };
+  };
+
+  const activeTargets = getActiveTargetInfo();
+
   return (
     <Card className="bg-slate-800/50 border-slate-700/50 p-6">
       <div className="flex items-start justify-between mb-4">
@@ -119,11 +163,39 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
             </span>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-white">{currentProgress}%</div>
-          <div className="text-sm text-slate-400">Progress</div>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <div className="text-2xl font-bold text-white">{currentProgress}%</div>
+            <div className="text-sm text-slate-400">Progress</div>
+          </div>
+          <Button
+            onClick={() => setShowTargetModal(true)}
+            variant="ghost"
+            size="sm"
+            className="text-slate-400 hover:text-white hover:bg-slate-700"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
         </div>
       </div>
+
+      {/* Active Targets Display */}
+      {activeTargets && (activeTargets.weeklyTarget || activeTargets.monthlyTarget) && (
+        <div className="mb-4 space-y-2">
+          {activeTargets.weeklyTarget && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-blue-400 font-medium">Weekly Target</span>
+              <span className="text-white">{activeTargets.weeklyTarget.target_value}%</span>
+            </div>
+          )}
+          {activeTargets.monthlyTarget && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-purple-400 font-medium">Monthly Target</span>
+              <span className="text-white">{activeTargets.monthlyTarget.target_value}%</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-3 mb-4">
         <div className="flex items-center justify-between text-sm">
@@ -175,6 +247,17 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
           100% Target
         </Button>
       </div>
+
+      <BatchTargetModal
+        isOpen={showTargetModal}
+        onClose={() => setShowTargetModal(false)}
+        batchId={batch.id}
+        batchName={batch.name}
+        onTargetCreated={() => {
+          fetchCurrentTargets();
+          onUpdateProgress();
+        }}
+      />
     </Card>
   );
 };
