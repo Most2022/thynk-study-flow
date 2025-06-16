@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -62,7 +61,12 @@ const BatchTargetModal = ({ isOpen, onClose, batchId, batchName, onTargetCreated
     if (error) {
       toast.error(`Failed to fetch targets: ${error.message}`);
     } else {
-      setExistingTargets(data || []);
+      // Type assertion to ensure target_type is properly typed
+      const typedTargets = (data || []).map(target => ({
+        ...target,
+        target_type: target.target_type as 'weekly' | 'monthly'
+      }));
+      setExistingTargets(typedTargets);
     }
   };
 

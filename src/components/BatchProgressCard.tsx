@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -94,7 +93,12 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
     if (error) {
       console.error('Failed to fetch current targets:', error);
     } else {
-      setCurrentTargets(data || []);
+      // Type assertion to ensure target_type is properly typed
+      const typedTargets = (data || []).map(target => ({
+        ...target,
+        target_type: target.target_type as 'weekly' | 'monthly'
+      }));
+      setCurrentTargets(typedTargets);
     }
   };
 
