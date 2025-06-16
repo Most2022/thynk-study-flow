@@ -1,20 +1,23 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Target } from 'lucide-react';
+import { CheckSquare, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-interface BatchTarget {
+interface BatchTask {
   id: string;
-  target_type: 'weekly' | 'monthly';
-  target_value: number;
-  start_date: string;
-  end_date: string;
+  title: string;
+  description: string | null;
+  task_type: 'weekly' | 'monthly';
+  is_completed: boolean;
+  created_at: string;
 }
 
 interface BatchTargetModalProps {
@@ -27,170 +30,154 @@ interface BatchTargetModalProps {
 
 const BatchTargetModal = ({ isOpen, onClose, batchId, batchName, onTargetCreated }: BatchTargetModalProps) => {
   const { user } = useAuth();
-  const [targetType, setTargetType] = useState<'weekly' | 'monthly'>('weekly');
-  const [targetValue, setTargetValue] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [taskType, setTaskType] = useState<'weekly' | 'monthly'>('weekly');
   const [isLoading, setIsLoading] = useState(false);
-  const [existingTargets, setExistingTargets] = useState<BatchTarget[]>([]);
+  const [existingTasks, setExistingTasks] = useState<BatchTask[]>([]);
 
   useEffect(() => {
     if (isOpen && user) {
-      fetchExistingTargets();
-      setDefaultDates();
+      fetchExistingTasks();
     }
   }, [isOpen, user, batchId]);
 
-  const setDefaultDates = () => {
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    
-    setStartDate(startOfWeek.toISOString().split('T')[0]);
-  };
-
-  const fetchExistingTargets = async () => {
+  const fetchExistingTasks = async () => {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from('batch_targets')
+      .from('batch_tasks')
       .select('*')
       .eq('user_id', user.id)
       .eq('batch_id', batchId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      toast.error(`Failed to fetch targets: ${error.message}`);
+      toast.error(`Failed to fetch tasks: ${error.message}`);
     } else {
-      // Type assertion to ensure target_type is properly typed
-      const typedTargets = (data || []).map(target => ({
-        ...target,
-        target_type: target.target_type as 'weekly' | 'monthly'
+      // Type assertion to ensure task_type is properly typed
+      const typedTasks = (data || []).map(task => ({
+        ...task,
+        task_type: task.task_type as 'weekly' | 'monthly'
       }));
-      setExistingTargets(typedTargets);
+      setExistingTasks(typedTasks);
     }
-  };
-
-  const calculateEndDate = (start: string, type: 'weekly' | 'monthly') => {
-    const startDate = new Date(start);
-    const endDate = new Date(startDate);
-    
-    if (type === 'weekly') {
-      endDate.setDate(startDate.getDate() + 6);
-    } else {
-      endDate.setMonth(startDate.getMonth() + 1);
-      endDate.setDate(endDate.getDate() - 1);
-    }
-    
-    return endDate.toISOString().split('T')[0];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !targetValue || !startDate) return;
-
-    const value = parseInt(targetValue);
-    if (value < 0 || value > 100) {
-      toast.error('Target value must be between 0 and 100');
-      return;
-    }
+    if (!user || !title.trim()) return;
 
     setIsLoading(true);
     try {
-      const endDate = calculateEndDate(startDate, targetType);
-
       const { error } = await supabase
-        .from('batch_targets')
+        .from('batch_tasks')
         .insert({
           user_id: user.id,
           batch_id: batchId,
-          target_type: targetType,
-          target_value: value,
-          start_date: startDate,
-          end_date: endDate,
+          title: title.trim(),
+          description: description.trim() || null,
+          task_type: taskType,
         });
 
       if (error) {
-        toast.error(`Failed to create target: ${error.message}`);
+        toast.error(`Failed to create task: ${error.message}`);
       } else {
-        toast.success(`${targetType.charAt(0).toUpperCase() + targetType.slice(1)} target created successfully!`);
-        setTargetValue('');
-        fetchExistingTargets();
+        toast.success(`${taskType.charAt(0).toUpperCase() + taskType.slice(1)} task created successfully!`);
+        setTitle('');
+        setDescription('');
+        fetchExistingTasks();
         onTargetCreated();
       }
     } catch (error) {
-      toast.error('Failed to create target');
+      toast.error('Failed to create task');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const deleteTarget = async (targetId: string) => {
+  const toggleTaskCompletion = async (taskId: string, currentStatus: boolean) => {
     if (!user) return;
 
     const { error } = await supabase
-      .from('batch_targets')
-      .delete()
-      .eq('id', targetId)
+      .from('batch_tasks')
+      .update({ is_completed: !currentStatus })
+      .eq('id', taskId)
       .eq('user_id', user.id);
 
     if (error) {
-      toast.error(`Failed to delete target: ${error.message}`);
+      toast.error(`Failed to update task: ${error.message}`);
     } else {
-      toast.success('Target deleted successfully!');
-      fetchExistingTargets();
+      toast.success(`Task ${!currentStatus ? 'completed' : 'marked incomplete'}!`);
+      fetchExistingTasks();
+      onTargetCreated();
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('batch_tasks')
+      .delete()
+      .eq('id', taskId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error(`Failed to delete task: ${error.message}`);
+    } else {
+      toast.success('Task deleted successfully!');
+      fetchExistingTasks();
       onTargetCreated();
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+      <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5" />
-            Set Target for {batchName}
+            <CheckSquare className="w-5 h-5" />
+            Tasks for {batchName}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="target-type">Target Type</Label>
-            <Select value={targetType} onValueChange={(value: 'weekly' | 'monthly') => setTargetType(value)}>
+            <Label htmlFor="title">Task Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter task title"
+              className="bg-slate-700 border-slate-600 text-white"
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="description">Description (Optional)</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter task description"
+              className="bg-slate-700 border-slate-600 text-white"
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="task-type">Task Type</Label>
+            <Select value={taskType} onValueChange={(value: 'weekly' | 'monthly') => setTaskType(value)}>
               <SelectTrigger className="bg-slate-700 border-slate-600">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-slate-700 border-slate-600">
-                <SelectItem value="weekly">Weekly Target</SelectItem>
-                <SelectItem value="monthly">Monthly Target</SelectItem>
+                <SelectItem value="weekly">Weekly Task</SelectItem>
+                <SelectItem value="monthly">Monthly Task</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="target-value">Target Percentage</Label>
-            <Input
-              id="target-value"
-              type="number"
-              min="0"
-              max="100"
-              value={targetValue}
-              onChange={(e) => setTargetValue(e.target.value)}
-              placeholder="Enter target percentage (0-100)"
-              className="bg-slate-700 border-slate-600 text-white"
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="start-date">Start Date</Label>
-            <Input
-              id="start-date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white"
-              required
-            />
           </div>
 
           <div className="flex gap-2">
@@ -204,34 +191,62 @@ const BatchTargetModal = ({ isOpen, onClose, batchId, batchName, onTargetCreated
             </Button>
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !title.trim()}
               className="flex-1 bg-indigo-600 hover:bg-indigo-700"
             >
-              {isLoading ? 'Creating...' : 'Create Target'}
+              <Plus className="w-4 h-4 mr-2" />
+              {isLoading ? 'Creating...' : 'Add Task'}
             </Button>
           </div>
         </form>
 
-        {existingTargets.length > 0 && (
+        {existingTasks.length > 0 && (
           <div className="mt-6 border-t border-slate-700 pt-4">
-            <h4 className="text-sm font-medium text-slate-300 mb-3">Existing Targets</h4>
-            <div className="space-y-2">
-              {existingTargets.map((target) => (
-                <div key={target.id} className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                  <div className="text-sm">
-                    <span className="font-medium">{target.target_value}%</span>
-                    <span className="text-slate-400 ml-2">
-                      {target.target_type} ({target.start_date} to {target.end_date})
-                    </span>
+            <h4 className="text-sm font-medium text-slate-300 mb-3">Your Tasks</h4>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {existingTasks.map((task) => (
+                <div key={task.id} className="p-3 bg-slate-700/50 rounded border border-slate-600">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <button
+                          onClick={() => toggleTaskCompletion(task.id, task.is_completed)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                            task.is_completed 
+                              ? 'bg-green-600 border-green-600' 
+                              : 'border-slate-400 hover:border-slate-300'
+                          }`}
+                        >
+                          {task.is_completed && (
+                            <CheckSquare className="w-3 h-3 text-white" />
+                          )}
+                        </button>
+                        <span className={`font-medium ${task.is_completed ? 'line-through text-slate-400' : 'text-white'}`}>
+                          {task.title}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          task.task_type === 'weekly' 
+                            ? 'bg-blue-600/20 text-blue-400' 
+                            : 'bg-purple-600/20 text-purple-400'
+                        }`}>
+                          {task.task_type}
+                        </span>
+                      </div>
+                      {task.description && (
+                        <p className={`text-sm ${task.is_completed ? 'text-slate-500' : 'text-slate-300'}`}>
+                          {task.description}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      onClick={() => deleteTask(task.id)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-400 hover:text-red-300 hover:bg-red-400/10 ml-2"
+                    >
+                      Delete
+                    </Button>
                   </div>
-                  <Button
-                    onClick={() => deleteTarget(target.id)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                  >
-                    Delete
-                  </Button>
                 </div>
               ))}
             </div>

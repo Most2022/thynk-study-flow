@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -89,7 +88,12 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
     if (error) {
       console.error('Failed to fetch tasks:', error);
     } else {
-      setTasks(data || []);
+      // Type assertion to ensure task_type is properly typed
+      const typedTasks = (data || []).map(task => ({
+        ...task,
+        task_type: task.task_type as 'weekly' | 'monthly'
+      }));
+      setTasks(typedTasks);
     }
   };
 

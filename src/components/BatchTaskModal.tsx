@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -55,7 +54,12 @@ const BatchTaskModal = ({ isOpen, onClose, batchId, batchName, onTaskCreated }: 
     if (error) {
       toast.error(`Failed to fetch tasks: ${error.message}`);
     } else {
-      setExistingTasks(data || []);
+      // Type assertion to ensure task_type is properly typed
+      const typedTasks = (data || []).map(task => ({
+        ...task,
+        task_type: task.task_type as 'weekly' | 'monthly'
+      }));
+      setExistingTasks(typedTasks);
     }
   };
 
