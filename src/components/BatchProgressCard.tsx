@@ -13,7 +13,7 @@ interface Batch {
   name: string;
   date: string;
   sources: number;
-  target_percentage: number;
+  target_percentage?: number;
 }
 
 interface BatchProgressCardProps {
@@ -83,9 +83,10 @@ const BatchProgressCard = ({ batch, onUpdateProgress }: BatchProgressCardProps) 
   };
 
   const getProgressColor = () => {
-    if (currentProgress >= (batch.target_percentage || 0)) {
+    const target = batch.target_percentage || 0;
+    if (currentProgress >= target) {
       return 'from-green-500 to-green-600';
-    } else if (currentProgress >= (batch.target_percentage || 0) * 0.7) {
+    } else if (currentProgress >= target * 0.7) {
       return 'from-yellow-500 to-orange-500';
     } else {
       return 'from-red-500 to-red-600';
